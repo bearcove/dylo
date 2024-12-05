@@ -24,7 +24,7 @@ struct Paths {
 }
 
 fn get_target_dir(mod_name: &str) -> std::path::PathBuf {
-    if let Ok(dir) = std::env::var("CON_TARGET_DIR") {
+    if let Ok(dir) = std::env::var("DYLO_TARGET_DIR") {
         return std::path::PathBuf::from(dir);
     }
 
@@ -97,7 +97,7 @@ enum BuildMod {
 
 impl BuildMod {
     fn from_env() -> Self {
-        match std::env::var("CON_BUILD").as_deref() {
+        match std::env::var("DYLO_BUILD").as_deref() {
             Ok("0") => BuildMod::Dont,
             Ok("1") => BuildMod::Yes,
             Ok("verbose") => BuildMod::Verbosely,

@@ -1,3 +1,5 @@
+use dylo_runtime as _;
+
 /// This is the entry point for this module when loaded dynamically.
 ///
 /// See <https://github.com/bearcove/dylo>

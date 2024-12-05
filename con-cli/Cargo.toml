@@ -1,0 +1,29 @@
+[package]
+name = "con-cli"
+version = "1.0.0"
+edition = "2021"
+authors = ["Amos Wenger <amos@bearcove.net>"]
+description = "Generate dyn-compatible traits with proc macros"
+license = "Apache-2.0 OR MIT"
+readme = "README.md"
+repository = "https://github.com/bearcove/con"
+keywords = ["proc-macro", "codegen", "dynamic", "ffi"]
+categories = ["development-tools::procedural-macro-helpers"]
+rust-version = "1.83"
+
+[[bin]]
+name = "con"
+path = "src/main.rs"
+
+[dependencies]
+fs-err = "3.0.0"
+tracing-subscriber = "0.3.18"
+walkdir = "2.5.0"
+syn = { version = "2.0.90", features = ["full"] }
+quote = "1.0.37"
+proc-macro2 = "1.0.92"
+rustfmt-wrapper = "0.2.1"
+toml_edit = "0.22.22"
+camino = "1.1.9"
+pico-args = "0.5.0"
+tracing = "0.1.41"

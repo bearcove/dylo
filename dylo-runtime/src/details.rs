@@ -13,7 +13,7 @@ pub trait AnyMod: Send + Sync + 'static {}
 // a loaded mod (type-erased `&'static dyn Mod`). note that
 // this is a fat pointer, since it contains the address of
 // the mod's vtable as well.
-pub type StaticTypeErasedModReference = &'static dyn AnyMod;
+pub type AnyModRef = &'static dyn AnyMod;
 
 mod platform;
 
@@ -152,7 +152,7 @@ fn build_mod(mod_name: &'static str) {
     cmd.env("CARGO_TARGET_DIR", &paths.cargo_target_dir);
     cmd.arg("build");
     cmd.arg("--verbose");
-    cmd.arg("--features=impl,con-loader/import-globals");
+    cmd.arg("--features=impl,dylo-runtime/import-globals");
     if build_profile == "release" {
         cmd.arg("--release");
     }
@@ -246,7 +246,7 @@ fn build_mod(mod_name: &'static str) {
     );
 }
 
-type LockSlot = Arc<Mutex<Option<StaticTypeErasedModReference>>>;
+type LockSlot = Arc<Mutex<Option<AnyModRef>>>;
 
 // keep locks per build directory, exported by rubicon. this avoids
 // rebuilding the same mod over and over — cargo can take up to ~200ms
@@ -256,7 +256,7 @@ rubicon::process_local! {
         LazyLock::new(|| Mutex::new(HashMap::new()));
 }
 
-pub fn load_mod(mod_name: &'static str) -> StaticTypeErasedModReference {
+pub fn load_mod(mod_name: &'static str) -> AnyModRef {
     let slot = {
         let mut locks = LOCKS.lock().unwrap();
         locks.entry(mod_name.to_string()).or_default().clone()
@@ -302,7 +302,7 @@ pub fn load_mod(mod_name: &'static str) -> StaticTypeErasedModReference {
         panic!("Did not find in dynamic library: {}", err);
     }
 
-    type InitFn = unsafe extern "Rust" fn() -> StaticTypeErasedModReference;
+    type InitFn = unsafe extern "Rust" fn() -> AnyModRef;
     let init_fn: InitFn = unsafe { std::mem::transmute(init_sym) };
     let plugin = unsafe { init_fn() };
 

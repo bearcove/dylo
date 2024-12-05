@@ -1,40 +1,7 @@
-/*
- * Here is the plan: `mods/` contains "mods", Rust crates that have an "impl" feature and a "consumer" feature.
- *
- * Their crate name is `mod-<name>` — we want to generate crates named `con-<name>`, that have everything
- * except anything under a `#[cfg(feature = "impl")]` section (which includes `struct ModImpl`, `impl Mod for ModImpl`, etc.)
- *
- * The key change is looking for `#[dylo::export]` attributes on impl blocks. When we find these:
- * 1. Generate corresponding trait definitions
- * 2. Write them to src/.con/spec.rs with a machine-generated notice
- * 3. Make sure there is an include statement for this file in the mod's lib.rs
- * 4. Copy the generated spec.rs file to the con version as-is
- *
- * The generated spec.rs file should:
- * - Have a clear machine-generated notice and regeneration instructions
- * - Not be counted in mod timestamps since it's generated
- * - Contain all trait definitions derived from #[dylo::export] impls
- *
- * The 'con' command-line utility will:
- *  1. List all mods in `mods/`
- *  2. For each mod:
- *    2a. Check timestamps of all files under mod directory (excluding .con/spec.rs)
- *    2b. Check for existence of con directory and its most recent timestamp
- *    2c. If force flag is passed, or con directory is missing, or mod timestamps are newer:
- *      2c1. Parse mod's lib.rs with syn and:
- *        - Strip #[cfg(feature = "impl")] items
- *        - Find #[dylo::export] impls and generate traits
- *        - Write traits to src/.con/spec.rs
- *      2c2. Generate new `Cargo.toml` based on mod's `Cargo.toml`, updating name
- *      2c3. Generate full tree for con version including copied spec.rs
- *      2c4. Compare with existing con version (if it exists)
- *      2c5. If they differ (or didn't exist):
- *        2c5a. Write generated Cargo.toml to con directory
- *        2c5b. Write generated lib.rs and spec.rs to con directory
- *        2c5c. Run `cargo check -p con-${mod_name}` to verify compilation
- */
-
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    time::SystemTime,
+};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use proc_macro2 as _;
@@ -42,15 +9,24 @@ use quote::ToTokens;
 use syn::{Attribute, ImplItem, Item, Type};
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
+/// represents a mod crate we're managing, including both its impl & consumer versions.
+/// contains paths and timestamps needed for monitoring file changes and determining when
+/// regeneration of the consumer version is necessary
 #[derive(Debug)]
 struct ModInfo {
+    /// human-readable name of the mod, extracted from the directory name (without mod- prefix)
     name: String,
-    mod_path: camino::Utf8PathBuf,
-    con_path: camino::Utf8PathBuf,
-    mod_timestamp: std::time::SystemTime,
-    con_timestamp: std::time::SystemTime,
+    /// location of the mod's implementation code ($workspace/mods/mod-$name/)
+    mod_path: Utf8PathBuf,
+    /// destination path for generating consumer version ($workspace/mods/$name/)
+    con_path: Utf8PathBuf,
+    /// timestamp of most recently modified file in mod directory
+    mod_timestamp: SystemTime,
+    /// timestamp of most recently modified file in consumer directory
+    con_timestamp: SystemTime,
 }
 
+/// Reason we might have to regenerate a mod's consumer version.
 #[derive(Debug)]
 enum ProcessReason {
     Force,
@@ -58,11 +34,12 @@ enum ProcessReason {
     Modified,
 }
 
+/// Discover all mods in the `mods/` directory.
 fn list_mods(mods_dir: &camino::Utf8Path) -> std::io::Result<Vec<ModInfo>> {
     let mut mods = Vec::new();
     for entry in fs_err::read_dir(mods_dir)? {
         let entry = entry?;
-        let mod_path: camino::Utf8PathBuf = entry.path().try_into().unwrap();
+        let mod_path: Utf8PathBuf = entry.path().try_into().unwrap();
 
         if !mod_path.is_dir() {
             continue;
@@ -74,14 +51,14 @@ fn list_mods(mods_dir: &camino::Utf8Path) -> std::io::Result<Vec<ModInfo>> {
         }
 
         let name = name.trim_start_matches("mod-").to_string();
-        let con_path = mods_dir.join(format!("con-{name}"));
+        let con_path = mods_dir.join(&name);
 
         // Check timestamps
         let mod_timestamp = get_latest_timestamp(&mod_path)?;
         let con_timestamp = if con_path.exists() {
             get_latest_timestamp(&con_path)?
         } else {
-            std::time::SystemTime::UNIX_EPOCH
+            SystemTime::UNIX_EPOCH
         };
 
         mods.push(ModInfo {
@@ -96,20 +73,72 @@ fn list_mods(mods_dir: &camino::Utf8Path) -> std::io::Result<Vec<ModInfo>> {
     Ok(mods)
 }
 
-fn mod_cargo_to_con_cargo(mod_info: &ModInfo) -> std::io::Result<String> {
+/// When generating the consumer manifest from a mod manifest:
+/// - Changes package name to strip the "mod-" prefix
+/// - Removes the dev-dependencies section
+/// - Removes the dylo dependency
+/// - Removes the "impl" feature & any dependencies it enables
+fn prepare_consumer_cargo_file(mod_info: &ModInfo) -> std::io::Result<String> {
     // Parse the TOML doc into an editable format
     let mod_cargo = fs_err::read_to_string(mod_info.mod_path.join("Cargo.toml"))?;
     let mut doc = mod_cargo.parse::<toml_edit::DocumentMut>().unwrap();
 
-    // Update package name to be prefixed with "con-"
-    doc["package"]["name"] = toml_edit::value(format!("con-{}", mod_info.name));
+    // Update package name to strip the "mod-" prefix
+    doc["package"]["name"] = toml_edit::value(mod_info.name.clone());
 
-    // If there's a features table, update the default features
-    // to only include "consumer" since this is the consumer crate
+    // Update crate-type from cdylib to rlib
+    let crate_type = doc["lib"]["crate-type"]
+        .as_array()
+        .expect("lib.crate-type must be an array");
+
+    assert_eq!(
+        crate_type.iter().next().unwrap().as_str().unwrap(),
+        "cdylib",
+        "lib.crate-type must be [\"cdylib\"]"
+    );
+    doc["lib"]["crate-type"] = toml_edit::value(toml_edit::Array::from_iter(["rlib"]));
+
+    doc["package"]["description"] = toml_edit::value(format!(
+        "Consumer module for the mod-{} crate, generated by https://github.com/bearcove/dylo",
+        mod_info.name
+    ));
+
+    let features_enabled_by_impl_feature: Vec<String> = doc
+        .get("features")
+        .and_then(|f| f.get("impl"))
+        .map(|i| {
+            i.as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut impl_specific_deps: HashSet<String> = Default::default();
+
+    for f in features_enabled_by_impl_feature.iter() {
+        if let Some(stripped) = f.strip_prefix("dep:") {
+            impl_specific_deps.insert(stripped.to_string());
+        }
+    }
+
+    // If there's a features table, update the default features to remove impl feature
     if let Some(features) = doc.get_mut("features") {
         if let Some(default) = features.get_mut("default") {
-            *default = toml_edit::value(toml_edit::Array::from_iter(["consumer"]));
+            let array = default
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|v| v.as_str().unwrap() != "impl")
+                .collect::<Vec<_>>();
+            *default = toml_edit::value(toml_edit::Array::from_iter(array));
         }
+    }
+
+    // Now remove the impl feature altogether
+    if let Some(features) = doc.get_mut("features") {
+        features.as_table_mut().unwrap().remove("impl");
     }
 
     // Remove dev-dependencies section if it exists
@@ -117,16 +146,36 @@ fn mod_cargo_to_con_cargo(mod_info: &ModInfo) -> std::io::Result<String> {
         doc.remove("dev-dependencies");
     }
 
-    // Remove con dependency if it exists
+    // Remove dylo dependency if it exists
     if let Some(deps) = doc.get_mut("dependencies") {
         if deps.is_table() {
-            deps.as_table_mut().unwrap().remove("con");
+            deps.as_table_mut().unwrap().remove("dylo");
+        }
+    }
+
+    // Remove impl_specific_deps from dependencies
+    if let Some(dependencies) = doc.get_mut("dependencies") {
+        if let Some(deps_table) = dependencies.as_table_mut() {
+            for dep_name in impl_specific_deps {
+                if deps_table.contains_key(&dep_name) {
+                    tracing::info!("Removing implied dependency {dep_name}");
+                    deps_table.remove(&dep_name);
+                }
+            }
         }
     }
 
     Ok(doc.to_string())
 }
 
+/// FileSet represents a set of files that need to be generated, stored in memory
+/// before being written to disk. This allows checking if any files would actually
+/// change before modifying them, which is important because Cargo uses file timestamps
+/// to determine what needs to be rebuilt. By only writing files when their contents
+/// would change, we avoid triggering unnecessary rebuilds just because timestamps
+/// were updated.
+///
+/// See `-Z checksum-freshness`: <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness>
 #[derive(Debug, Clone)]
 struct FileSet {
     files: HashMap<Utf8PathBuf, String>,
@@ -139,6 +188,7 @@ impl FileSet {
         }
     }
 
+    /// True if any files are missing from disk or have different contents.
     fn is_different(&self, root: &Utf8Path) -> std::io::Result<bool> {
         for (rel_path, contents) in &self.files {
             let full_path = root.join(rel_path);
@@ -153,6 +203,7 @@ impl FileSet {
         Ok(false)
     }
 
+    /// Write file contents to disk, creating parent directories as needed.
     fn commit(&self, root: &Utf8Path) -> std::io::Result<()> {
         for (rel_path, contents) in &self.files {
             let full_path = root.join(rel_path);
@@ -164,6 +215,10 @@ impl FileSet {
         Ok(())
     }
 }
+
+const SPEC_PATH: &str = ".dylo/spec.rs";
+const INIT_PATH: &str = ".dylo/init.rs";
+const LOAD_PATH: &str = ".dylo/load.rs";
 
 fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let mod_ts = mod_info
@@ -202,27 +257,13 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         return Ok(());
     };
 
-    tracing::info!("📦 Processing mod {} ({:?})", mod_info.name, reason);
+    tracing::info!("📦 Processing mod {} (because {:?})", mod_info.name, reason);
 
     // Generate consumer version by parsing and filtering lib.rs
-    tracing::info!("⚙️ Parsing mod {}", mod_info.name);
     let start = std::time::Instant::now();
 
     let lib_rs = fs_err::read_to_string(mod_info.mod_path.join("src/lib.rs"))?;
     let ast = syn::parse_file(&lib_rs).unwrap();
-
-    // Check for include statement for .con/spec.rs
-    let includes_spec = ast.items.iter().any(|item| {
-        if let Item::Macro(mac) = item {
-            if mac.mac.path.is_ident("include") {
-                let tokens = mac.mac.tokens.to_string();
-                return tokens.contains(".con/spec.rs");
-            }
-        }
-        false
-    });
-
-    tracing::debug!("include .con/spec.rs statement present: {includes_spec}");
 
     let mut con_items: Vec<Item> = ast.items.clone();
     let mut spec_items: Vec<Item> = Default::default();
@@ -230,41 +271,36 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
 
     let duration = start.elapsed();
 
+    let autogen_attrs = vec![syn::parse_quote! {
+        #[doc = "This file was automatically generated by https://github.com/bearcove/dylo"]
+    }];
+
     let spec_ast = syn::File {
         shebang: None,
-        attrs: vec![
-            syn::parse_quote! {
-                #[doc = "// This file was automatically generated by the `conman` utility."]
-            },
-            syn::parse_quote! {
-                #[doc = "// To regenerate this file, run `conman` in the root directory."]
-            },
-            syn::parse_quote! {
-                #[doc = "// Do not edit this file directly - your changes will be overwritten."]
-            },
-        ],
+        attrs: autogen_attrs.clone(),
         items: spec_items,
     };
-
     let spec_expanded = spec_ast.into_token_stream().to_string();
     let spec_formatted = rustfmt_wrapper::rustfmt(spec_expanded).unwrap();
 
+    con_items.insert(
+        0,
+        syn::parse_quote! {
+            include!("dylo/load.rs");
+        },
+    );
+    con_items.insert(
+        0,
+        syn::parse_quote! {
+            include!("dylo/spec.rs");
+        },
+    );
+
     let con_ast = syn::File {
         shebang: None,
-        attrs: vec![
-            syn::parse_quote! {
-                #[doc = "// This file was automatically generated by https://github.com/bearcove/dylo"]
-            },
-            syn::parse_quote! {
-                #[doc = "// To regenerate this file, run `con` in the root directory."]
-            },
-            syn::parse_quote! {
-                #[doc = "// Do not edit this file directly - your changes will be overwritten."]
-            },
-        ],
+        attrs: autogen_attrs.clone(),
         items: con_items,
     };
-
     let con_expanded = con_ast.into_token_stream().to_string();
     let con_formatted = rustfmt_wrapper::rustfmt(con_expanded).unwrap();
 
@@ -280,23 +316,60 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     // Add spec.rs to mod version
     mod_files
         .files
-        .insert("src/.con/spec.rs".into(), spec_formatted.clone());
+        .insert(format!("src/{SPEC_PATH}").into(), spec_formatted.clone());
 
-    if !includes_spec {
-        let content = format!("// Include autogenerated interface specifications\ninclude!(\".con/spec.rs\");\n\n{lib_rs}");
+    let init_src = include_str!("init_template.rs");
+    mod_files
+        .files
+        .insert(format!("src/{INIT_PATH}").into(), init_src.to_string());
+
+    // Check for include statements for spec and init files
+    let mut added_prefixes = Vec::new();
+
+    let mut include_paths = HashSet::new();
+    for item in &ast.items {
+        if let Item::Macro(mac) = item {
+            if mac.mac.path.is_ident("include") {
+                if let Ok(lit) = syn::parse2::<syn::LitStr>(mac.mac.tokens.clone()) {
+                    let path = lit.value();
+                    tracing::debug!("the file includes {path:?}");
+                    include_paths.insert(path);
+                }
+            }
+        }
+    }
+
+    if !include_paths.contains(SPEC_PATH) {
+        added_prefixes.push(format!("include!(\"{SPEC_PATH}\");"));
+    }
+
+    if !include_paths.contains(INIT_PATH) {
+        added_prefixes.push(format!("include!(\"{INIT_PATH}\");"));
+    }
+
+    if !added_prefixes.is_empty() {
+        let prefix = format!("{}\n\n", added_prefixes.join("\n"));
+        let content = format!("{prefix}{lib_rs}");
         mod_files.files.insert("src/lib.rs".into(), content);
     }
 
     // Generate files for consumer version
     let mut con_files = FileSet::new();
+
     // Generate Cargo.toml
-    let con_cargo = mod_cargo_to_con_cargo(&mod_info)?;
+    let con_cargo = prepare_consumer_cargo_file(&mod_info)?;
     con_files.files.insert("Cargo.toml".into(), con_cargo);
+
     // Add lib.rs and spec.rs
     con_files.files.insert("src/lib.rs".into(), con_formatted);
+
     con_files
         .files
-        .insert("src/.con/spec.rs".into(), spec_formatted);
+        .insert(format!("src/{SPEC_PATH}").into(), spec_formatted);
+    let load_src = include_str!("load_template.rs");
+    con_files
+        .files
+        .insert(format!("src/{LOAD_PATH}").into(), load_src.to_string());
 
     // Update mod files if different
     let mod_path = Utf8Path::new(&mod_info.mod_path);
@@ -438,7 +511,7 @@ fn transform_macro_items(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
         if let Item::Impl(imp) = item {
             for attr in &imp.attrs {
                 if attr.path().segments.len() == 2
-                    && attr.path().segments[0].ident == "con"
+                    && attr.path().segments[0].ident == "dylo"
                     && attr.path().segments[1].ident == "export"
                 {
                     let iface_typ = if let Ok(_meta) = attr.meta.require_path_only() {
@@ -538,7 +611,7 @@ fn remove_mutable_bindings_from_sig(sig: &syn::Signature) -> syn::Signature {
     newsig
 }
 
-fn get_latest_timestamp(path: &camino::Utf8Path) -> std::io::Result<std::time::SystemTime> {
+fn get_latest_timestamp(path: &camino::Utf8Path) -> std::io::Result<SystemTime> {
     let mut latest = fs_err::metadata(path)?.modified()?;
     let mut latest_path = path.to_owned();
 

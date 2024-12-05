@@ -1,5 +1,5 @@
 [package]
-name = "dylo-runtime"
+name = "dylo-cli"
 version = "1.0.0"
 edition = "2021"
 authors = ["Amos Wenger <amos@bearcove.net>"]
@@ -12,7 +12,7 @@ categories = ["development-tools::procedural-macro-helpers"]
 rust-version = "1.83"
 
 [[bin]]
-name = "con"
+name = "dylo"
 path = "src/main.rs"
 
 [dependencies]

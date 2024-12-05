@@ -48,6 +48,8 @@ impl Bar for BarImpl {}
 The `Mod` trait has special treatment: the concrete type `ModImpl` must implement `Default`,
 because it must be able to be constructed dynamically when the mod is loaded, from no arguments.
 
+If `Mod` or `ModImpl` are missing, the code geneated by dylo will not compile.
+
 [dylo-cli](https://crates.io/crates/dylo-cli) will make sure that:
 
   * In the `mod` crate, there's an exported function that returns a `Box<dyn ModImpl>`

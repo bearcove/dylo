@@ -13,3 +13,7 @@ rust-version = "1.83"
 
 [dependencies]
 rubicon = "3.4.9"
+
+[features]
+import-globals = ["rubicon/import-globals"]
+export-globals = ["rubicon/export-globals"]

@@ -363,6 +363,32 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
 
     // Generate files for mod version
     let mut mod_files = FileSet::new();
+
+    // Check and add "dylo-runtime" dependency to Cargo.toml if needed
+    let cargo_toml = fs_err::read_to_string(mod_info.mod_path.join("Cargo.toml"))?;
+    let mut doc = cargo_toml.parse::<toml_edit::DocumentMut>().unwrap();
+
+    let mut need_dylo_runtime = true;
+    if let Some(deps) = doc.get("dependencies") {
+        if deps.is_table() {
+            let deps_table = deps.as_table().unwrap();
+            if deps_table.contains_key("dylo-runtime") {
+                need_dylo_runtime = false;
+            }
+        }
+    }
+
+    if need_dylo_runtime {
+        tracing::info!("Adding dylo-runtime dependency to {}", mod_info.name);
+        if let Some(deps) = doc.get_mut("dependencies") {
+            if deps.is_table() {
+                let deps_table = deps.as_table_mut().unwrap();
+                deps_table.insert("dylo-runtime", toml_edit::value(DYLO_RUNTIME_VERSION));
+                mod_files.files.insert("Cargo.toml".into(), doc.to_string());
+            }
+        }
+    }
+
     // Add spec.rs to mod version
     mod_files
         .files

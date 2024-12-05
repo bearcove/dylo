@@ -13,10 +13,3 @@ rust-version = "1.83"
 
 [lib]
 proc-macro = true
-
-[dependencies]
-rubicon = { version = "3.4.9" }
-
-[features]
-import-globals = ["rubicon/import-globals"]
-export-globals = ["rubicon/export-globals"]

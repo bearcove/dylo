@@ -184,7 +184,7 @@ fn build_mod(mod_name: &'static str) {
     cmd.env("CARGO_TARGET_DIR", &paths.cargo_target_dir);
     cmd.arg("build");
     cmd.arg("--verbose");
-    cmd.arg("--features=impl,dylo/import-globals");
+    cmd.arg("--features=impl,dylo-runtime/import-globals");
     if build_profile == "release" {
         cmd.arg("--release");
     }

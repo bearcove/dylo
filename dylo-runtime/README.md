@@ -19,7 +19,7 @@ In production, you probably want `DYLO_BUILD` to be set to 0, as your mods
 should be pre-built, and put in the right place, next to the executable.
 
 > **Warning**
-> Make sure to build your mods with the `dylo/import-globals` and `impl`
+> Make sure to build your mods with the `dylo-runtime/import-globals` and `impl`
 > features enabled, just like `dylo-runtime` would do.
 >
 > See the [rubicon docs](https://crates.io/crates/rubicon) for more details: essentially, your

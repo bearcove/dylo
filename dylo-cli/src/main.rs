@@ -266,7 +266,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
 
     let mut con_items: Vec<Item> = ast.items.clone();
     let mut spec_items: Vec<Item> = Default::default();
-    transform_macro_items(&mut con_items, &mut spec_items);
+    transform_ast(&mut con_items, &mut spec_items);
 
     let duration = start.elapsed();
 
@@ -522,40 +522,73 @@ impl InterfaceType {
     }
 }
 
-fn transform_macro_items(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
-    items.retain(|item| {
+fn transform_ast(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
+    items.retain_mut(|item| {
         let mut keep = true;
-        if let Item::Impl(imp) = item {
-            for attr in &imp.attrs {
-                if attr.path().segments.len() == 2
-                    && attr.path().segments[0].ident == "dylo"
-                    && attr.path().segments[1].ident == "export"
-                {
-                    let iface_typ = if let Ok(_meta) = attr.meta.require_path_only() {
-                        Some(InterfaceType::Sync)
-                    } else if let Ok(list) = attr.meta.require_list() {
-                        if list.tokens.to_string().contains("nonsync") {
-                            Some(InterfaceType::NonSync)
+
+        match item {
+            Item::Impl(imp) => {
+                for attr in &imp.attrs {
+                    if attr.path().segments.len() == 2
+                        && attr.path().segments[0].ident == "dylo"
+                        && attr.path().segments[1].ident == "export"
+                    {
+                        let iface_typ = if let Ok(_meta) = attr.meta.require_path_only() {
+                            Some(InterfaceType::Sync)
+                        } else if let Ok(list) = attr.meta.require_list() {
+                            if list.tokens.to_string().contains("nonsync") {
+                                Some(InterfaceType::NonSync)
+                            } else {
+                                None
+                            }
                         } else {
                             None
-                        }
-                    } else {
-                        None
-                    };
+                        };
 
-                    if let Some(iface_typ) = iface_typ {
-                        let tokens = (&imp).into_token_stream();
-                        added_items.push(declare_trait(&tokens, &iface_typ)[0].clone());
+                        if let Some(iface_typ) = iface_typ {
+                            let tokens = (&imp).into_token_stream();
+                            added_items.push(declare_trait(&tokens, &iface_typ)[0].clone());
+                        }
+                        keep = false
                     }
-                    keep = false
                 }
             }
+            Item::Enum(enm) => {
+                filter_out_cfg_attr_impl(&mut enm.attrs);
+            }
+            Item::Struct(stru) => {
+                filter_out_cfg_attr_impl(&mut stru.attrs);
+                for f in stru.fields.iter_mut() {
+                    filter_out_cfg_attr_impl(&mut f.attrs);
+                }
+            }
+            _ => {
+                // ignore
+            }
         }
+
         if should_remove_item(item) {
             keep = false
         }
         keep
     });
+}
+
+fn filter_out_cfg_attr_impl(attrs: &mut Vec<Attribute>) {
+    attrs.retain_mut(|attr| {
+        if let syn::Meta::List(list) = &attr.meta {
+            if let Some(path_segment) = list.path.segments.first() {
+                if path_segment.ident == "cfg_attr" {
+                    if let Some(nested) = list.tokens.to_string().split(",").next() {
+                        if nested.contains("feature") && nested.contains("\"impl\"") {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    })
 }
 
 fn declare_trait(tokens: &proc_macro2::TokenStream, iface_typ: &InterfaceType) -> Vec<Item> {

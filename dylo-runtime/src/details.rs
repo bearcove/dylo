@@ -47,8 +47,40 @@ fn get_paths(mod_name: &str) -> Paths {
         .ancestors()
         .find(|p| p.join("Cargo.toml").exists())
         .unwrap_or(current_exe_folder);
+    eprintln!("base dir: {:?}", base_dir);
 
-    let mod_srcdir = base_dir.join("mods").join(format!("mod-{mod_name}"));
+    fn find_mod_dir(dir: &std::path::Path, mod_name: &str) -> Option<std::path::PathBuf> {
+        if !dir.is_dir() {
+            return None;
+        }
+
+        let dir_name = dir.file_name()?.to_str()?;
+        if dir_name.starts_with(".")
+            || dir_name.starts_with("target")
+            || dir_name.starts_with("node_modules")
+        {
+            // no thanks
+            return None;
+        }
+
+        if dir_name == format!("mod-{mod_name}") {
+            return Some(dir.to_path_buf());
+        }
+
+        for entry in dir.read_dir().ok()? {
+            let entry = entry.ok()?;
+            let path = entry.path();
+
+            if let Some(found) = find_mod_dir(&path, mod_name) {
+                return Some(found);
+            }
+        }
+
+        None
+    }
+
+    let mod_srcdir = find_mod_dir(base_dir, mod_name)
+        .unwrap_or_else(|| panic!("Could not find mod source directory for mod {mod_name}"));
     let cargo_target_dir = get_target_dir(mod_name);
 
     Paths {
@@ -152,7 +184,7 @@ fn build_mod(mod_name: &'static str) {
     cmd.env("CARGO_TARGET_DIR", &paths.cargo_target_dir);
     cmd.arg("build");
     cmd.arg("--verbose");
-    cmd.arg("--features=impl,dylo-runtime/import-globals");
+    cmd.arg("--features=impl,dylo/import-globals");
     if build_profile == "release" {
         cmd.arg("--release");
     }

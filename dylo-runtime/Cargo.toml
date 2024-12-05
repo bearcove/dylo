@@ -12,8 +12,4 @@ categories = ["development-tools"]
 rust-version = "1.83"
 
 [dependencies]
-rubicon = { version = "3.4.9" }
-
-[features]
-import-globals = ["rubicon/import-globals"]
-export-globals = ["rubicon/export-globals"]
+rubicon = "3.4.9"

@@ -39,21 +39,27 @@ enum ProcessReason {
 /// Discover all mods in the `./` directory, recursively
 fn list_mods(mods_dir: &camino::Utf8Path) -> std::io::Result<Vec<ModInfo>> {
     let mut mods = Vec::new();
-    for entry in fs_err::read_dir(mods_dir)? {
+    for entry in walkdir::WalkDir::new(mods_dir) {
         let entry = entry?;
-        let mod_path: Utf8PathBuf = entry.path().try_into().unwrap();
+        let mod_path: Utf8PathBuf = entry.path().to_owned().try_into().unwrap();
 
         if !mod_path.is_dir() {
             continue;
         }
 
-        let name = mod_path.file_name().unwrap().to_string();
+        if !mod_path.join("Cargo.toml").exists() {
+            continue;
+        }
+
+        let Some(name) = mod_path.file_name().map(|n| n.to_string()) else {
+            continue;
+        };
         if !name.starts_with("mod-") {
             continue;
         }
 
         let name = name.trim_start_matches("mod-").to_string();
-        let con_path = mods_dir.join(&name);
+        let con_path = mod_path.parent().unwrap().join(&name);
 
         // Check timestamps
         let mod_timestamp = get_latest_timestamp(&mod_path)?;
@@ -447,8 +453,12 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
                 mod_info.name,
                 duration.as_secs_f32()
             );
-            tracing::error!("⛔ Exiting due to failed cargo check");
-            std::process::exit(1);
+            if force {
+                tracing::warn!("⚠️ Continuing despite failed cargo check due to --force");
+            } else {
+                tracing::error!("⛔ Exiting due to failed cargo check");
+                std::process::exit(1);
+            }
         }
     }
     Ok(())

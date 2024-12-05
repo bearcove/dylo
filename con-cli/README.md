@@ -33,3 +33,7 @@ Options:
 * `-h, --help`: Print help information
 
 By default, changes are only made if the source mod crates have been modified more recently than their generated consumer crates.
+
+## con annotations, exporting interfaces etc.
+
+For how to write con-friendly code, see the documentation of the [con crate](https://docs.rs/con)

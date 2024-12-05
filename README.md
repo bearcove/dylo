@@ -23,7 +23,7 @@ But it's a lot of going back and forth and adapting the impl to the trait or the
 A block like this contains everything you need to declare the corresponding trait:
 
 ```rust
-#[con::spec]
+#[con::export]
 impl RequestBuilder for RequestBuilderImpl {
     fn add_header(&mut self, name: &str, value: &str) -> &mut Self {
         self.headers.push((name.to_string(), value.to_string()));
@@ -55,7 +55,7 @@ it would slow down its build time significantly, bringing in all sorts of depend
 So instead, although `con` itself _is_ a proc-macro crate, it has zero dependencies, and
 doesn't transform the token stream at all.
 
-It merely defines attributes like `[con::spec]`, that a separate tool, `con-cli`, will look for,
+It merely defines attributes like `[con::export]`, that a separate tool, `con-cli`, will look for,
 to know which trait definitions to generate.
 
 In short, running `con` in a workspace will:

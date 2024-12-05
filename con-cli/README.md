@@ -4,7 +4,7 @@
 
 # con-cli
 
-`con-cli` generates the consumer crates corresponding to module implementation crates marked with `#[con::spec]` attributes. This tool scans the workspace for crates starting with `mod-` and generates corresponding `con-` crates that contain just the trait definitions and public interfaces.
+`con-cli` generates the consumer crates corresponding to module implementation crates marked with `#[con::export]` attributes. This tool scans the workspace for crates starting with `mod-` and generates corresponding `con-` crates that contain just the trait definitions and public interfaces.
 
 ## Installation
 

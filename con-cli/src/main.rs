@@ -4,7 +4,7 @@
  * Their crate name is `mod-<name>` — we want to generate crates named `con-<name>`, that have everything
  * except anything under a `#[cfg(feature = "impl")]` section (which includes `struct ModImpl`, `impl Mod for ModImpl`, etc.)
  *
- * The key change is looking for `#[con::spec]` attributes on impl blocks. When we find these:
+ * The key change is looking for `#[con::export]` attributes on impl blocks. When we find these:
  * 1. Generate corresponding trait definitions
  * 2. Write them to src/.con/spec.rs with a machine-generated notice
  * 3. Make sure there is an include statement for this file in the mod's lib.rs
@@ -13,7 +13,7 @@
  * The generated spec.rs file should:
  * - Have a clear machine-generated notice and regeneration instructions
  * - Not be counted in mod timestamps since it's generated
- * - Contain all trait definitions derived from #[con::spec] impls
+ * - Contain all trait definitions derived from #[con::export] impls
  *
  * The 'con' command-line utility will:
  *  1. List all mods in `mods/`
@@ -23,7 +23,7 @@
  *    2c. If force flag is passed, or con directory is missing, or mod timestamps are newer:
  *      2c1. Parse mod's lib.rs with syn and:
  *        - Strip #[cfg(feature = "impl")] items
- *        - Find #[con::spec] impls and generate traits
+ *        - Find #[con::export] impls and generate traits
  *        - Write traits to src/.con/spec.rs
  *      2c2. Generate new `Cargo.toml` based on mod's `Cargo.toml`, updating name
  *      2c3. Generate full tree for con version including copied spec.rs
@@ -439,7 +439,7 @@ fn transform_macro_items(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
             for attr in &imp.attrs {
                 if attr.path().segments.len() == 2
                     && attr.path().segments[0].ident == "con"
-                    && attr.path().segments[1].ident == "spec"
+                    && attr.path().segments[1].ident == "export"
                 {
                     let iface_typ = if let Ok(_meta) = attr.meta.require_path_only() {
                         Some(InterfaceType::Sync)

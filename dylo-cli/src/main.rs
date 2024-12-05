@@ -329,21 +329,15 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     }
 
     if missing_spec {
-        con_items.insert(
-            0,
-            syn::parse_quote! {
-                include!(".dylo/spec.rs");
-            },
-        );
+        con_items.push(syn::parse_quote! {
+            include!(".dylo/spec.rs");
+        });
     }
 
     if missing_support {
-        con_items.insert(
-            0,
-            syn::parse_quote! {
-                include!(".dylo/support.rs");
-            },
-        );
+        con_items.push(syn::parse_quote! {
+            include!(".dylo/support.rs");
+        });
     }
 
     let con_ast = syn::File {
@@ -373,9 +367,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         .files
         .insert(format!("src/{SUPPORT_PATH}").into(), init_src.to_string());
 
-    // Check for include statements for spec and init files
-    let mut added_prefixes = Vec::new();
-
+    // Check for include statements for spec and support files
     let mut include_paths = HashSet::new();
     for item in &ast.items {
         if let Item::Macro(mac) = item {
@@ -388,18 +380,18 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
             }
         }
     }
+    let mut added_suffixes = Vec::new();
 
     if !include_paths.contains(SPEC_PATH) {
-        added_prefixes.push(format!("include!(\"{SPEC_PATH}\");"));
+        added_suffixes.push(format!("include!(\"{SPEC_PATH}\");"));
     }
-
     if !include_paths.contains(SUPPORT_PATH) {
-        added_prefixes.push(format!("include!(\"{SUPPORT_PATH}\");"));
+        added_suffixes.push(format!("include!(\"{SUPPORT_PATH}\");"));
     }
 
-    if !added_prefixes.is_empty() {
-        let prefix = format!("{}\n\n", added_prefixes.join("\n"));
-        let content = format!("{prefix}{lib_rs}");
+    if !added_suffixes.is_empty() {
+        let suffix = format!("\n\n{}", added_suffixes.join("\n"));
+        let content = format!("{lib_rs}{suffix}");
         mod_files.files.insert("src/lib.rs".into(), content);
     }
 
@@ -455,6 +447,8 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
                 mod_info.name,
                 duration.as_secs_f32()
             );
+            tracing::error!("⛔ Exiting due to failed cargo check");
+            std::process::exit(1);
         }
     }
     Ok(())

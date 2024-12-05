@@ -20,7 +20,7 @@ impl Extensions {
                     dbg: "so.dwp",
                 }
             } else {
-                panic!("Unsupported operating system - https://crates.io/crates/con-loader only supports MacOS and Linux for now");
+                panic!("Unsupported operating system - https://crates.io/crates/dylo-loader only supports MacOS and Linux for now");
             }
         });
 

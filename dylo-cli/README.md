@@ -1,18 +1,18 @@
 [![license: MIT/Apache-2.0](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE-MIT)
-[![crates.io](https://img.shields.io/crates/v/con-cli.svg)](https://crates.io/crates/con-cli)
-[![docs.rs](https://docs.rs/con-cli/badge.svg)](https://docs.rs/con-cli)
+[![crates.io](https://img.shields.io/crates/v/dylo-runtime.svg)](https://crates.io/crates/dylo-runtime)
+[![docs.rs](https://docs.rs/dylo-runtime/badge.svg)](https://docs.rs/dylo-runtime)
 
-# con-cli
+# dylo-runtime
 
-`con-cli` generates the consumer crates corresponding to module implementation crates marked with `#[con::export]` attributes. This tool scans the workspace for crates starting with `mod-` and generates corresponding `con-` crates that contain just the trait definitions and public interfaces.
+`dylo-runtime` generates the consumer crates corresponding to module implementation crates marked with `#[dylo::export]` attributes. This tool scans the workspace for crates starting with `mod-` and generates corresponding `con-` crates that contain just the trait definitions and public interfaces.
 
 ## Installation
 
 ```
-cargo install con-cli
+cargo install dylo-runtime
 ```
 
-Note that con-cli needs `rustfmt` to be present at runtime.
+Note that dylo-runtime needs `rustfmt` to be present at runtime.
 
 ## Usage
 
@@ -38,4 +38,4 @@ By default, changes are only made if the source mod crates have been modified mo
 
 ## con annotations, exporting interfaces etc.
 
-For how to write con-friendly code, see the documentation of the [con crate](https://docs.rs/con)
+For how to write con-friendly code, see the documentation of the [con crate](https://docs.rs/dylo)

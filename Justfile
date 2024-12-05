@@ -1,3 +1,3 @@
 
 test:
-  cargo build --release -p con-cli
+  cargo build --release -p dylo-runtime

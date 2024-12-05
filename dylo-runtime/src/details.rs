@@ -293,7 +293,7 @@ pub fn load_mod(mod_name: &'static str) -> StaticTypeErasedModReference {
 
     // note: we never dlclose the handle, on purpose.
 
-    let symbol_name = CString::new("https://github.com/bearcove/con").unwrap();
+    let symbol_name = CString::new("https://github.com/bearcove/dylo").unwrap();
     let init_sym = unsafe { dlsym(handle, symbol_name.as_ptr()) };
     if init_sym.is_null() {
         let err = unsafe { std::ffi::CStr::from_ptr(dlerror()) }

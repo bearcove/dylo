@@ -1,12 +1,12 @@
 [package]
-name = "con-cli"
+name = "dylo-runtime"
 version = "1.0.0"
 edition = "2021"
 authors = ["Amos Wenger <amos@bearcove.net>"]
 description = "Generate dyn-compatible traits with proc macros"
 license = "Apache-2.0 OR MIT"
 readme = "README.md"
-repository = "https://github.com/bearcove/con"
+repository = "https://github.com/bearcove/dylo"
 keywords = ["proc-macro", "codegen", "dynamic", "ffi"]
 categories = ["development-tools::procedural-macro-helpers"]
 rust-version = "1.83"

@@ -9,7 +9,7 @@
 However, this is the right place to learn about environment variables that will impact the
 behavior of dylo-runtime:
 
-* `DYLO_TARGET_DIR`: Set the build directory for hot-reloadable plugins. By default, plugins are built into `$HOME/.con-mods/{mod-name}` or `%USERPROFILE%\.con-mods\{mod-name}` on Windows.
+* `DYLO_TARGET_DIR`: Set the build directory for hot-reloadable plugins. By default, plugins are built into `$HOME/.dylo-mods/{mod-name}` or `%USERPROFILE%\.dylo-mods\{mod-name}` on Windows.
 
 * `DYLO_BUILD`: Set to "0" to disable automatic mod compilation. Defaults to "1".
   Set to "verbose" to have cargo inherit stdout/stderr, which will show progress messages

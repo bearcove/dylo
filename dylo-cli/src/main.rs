@@ -18,9 +18,9 @@ const DYLO_RUNTIME_VERSION: &str = "1.0.0";
 struct ModInfo {
     /// human-readable name of the mod, extracted from the directory name (without mod- prefix)
     name: String,
-    /// location of the mod's implementation code ($workspace/mods/mod-$name/)
+    /// location of the mod's implementation code ($workspace/mod-$name/)
     mod_path: Utf8PathBuf,
-    /// destination path for generating consumer version ($workspace/mods/$name/)
+    /// destination path for generating consumer version ($workspace/$name/)
     con_path: Utf8PathBuf,
     /// timestamp of most recently modified file in mod directory
     mod_timestamp: SystemTime,
@@ -36,7 +36,7 @@ enum ProcessReason {
     Modified,
 }
 
-/// Discover all mods in the `mods/` directory.
+/// Discover all mods in the `./` directory, recursively
 fn list_mods(mods_dir: &camino::Utf8Path) -> std::io::Result<Vec<ModInfo>> {
     let mut mods = Vec::new();
     for entry in fs_err::read_dir(mods_dir)? {
@@ -761,7 +761,7 @@ fn main() -> std::io::Result<()> {
     }
 
     let args = parse_args();
-    let mods_dir = Utf8Path::new("mods");
+    let mods_dir = Utf8Path::new(".");
 
     let mut mods = list_mods(mods_dir)?;
     tracing::info!("🔍 Found {} mods total", mods.len());

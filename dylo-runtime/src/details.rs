@@ -33,7 +33,7 @@ fn get_target_dir(mod_name: &str) -> std::path::PathBuf {
         .expect("Neither HOME nor USERPROFILE environment variables are set");
 
     std::path::PathBuf::from(home_dir)
-        .join(".con-mods")
+        .join(".dylo-mods")
         .join(mod_name)
 }
 

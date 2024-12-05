@@ -1,8 +1,7 @@
 [workspace]
 members = [
-    "con",
-    "con-cli",
-    "con-loader", "test-workspace/app",
+    "app",
+    "mods/*",
 ]
 exclude = [
     "test-workspace",

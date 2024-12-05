@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "con",
+    "dylo",
+    "dylo-cli",
     "dylo-runtime",
-    "con-loader", "test-workspace/app",
 ]
 exclude = [
     "test-workspace",

@@ -19,6 +19,8 @@ for annotations from the [dylo](https://crates.io/crates/dylo) proc-macro crate,
 Although that pattern is doable by hand, dylo takes a lot of the human error and repetitive work
 out of the equation.
 
-  * [dylo-runtime](https://crates.io/crates/dylo-runtime)
+To learn more, read the various crate documentation in order:
+
   * [dylo](https://crates.io/crates/dylo)
+  * [dylo-cli](https://crates.io/crates/dylo-cli)
   * [dylo-runtime](https://crates.io/crates/dylo-runtime)

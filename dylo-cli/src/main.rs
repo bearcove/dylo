@@ -9,6 +9,8 @@ use quote::ToTokens;
 use syn::{Attribute, ImplItem, Item, Type};
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
+const DYLO_RUNTIME_VERSION: &str = "1.0.0";
+
 /// represents a mod crate we're managing, including both its impl & consumer versions.
 /// contains paths and timestamps needed for monitoring file changes and determining when
 /// regeneration of the consumer version is necessary
@@ -115,11 +117,36 @@ fn prepare_consumer_cargo_file(mod_info: &ModInfo) -> std::io::Result<String> {
         })
         .unwrap_or_default();
 
+    let mut features_enabled_by_other_features: HashSet<String> = Default::default();
+    if let Some(features) = doc.get("features").and_then(|f| f.as_table()) {
+        for (name, values) in features.iter() {
+            if name == "impl" {
+                continue;
+            }
+
+            if let Some(array) = values.as_array() {
+                for value in array {
+                    if let Some(s) = value.as_str() {
+                        features_enabled_by_other_features.insert(s.to_string());
+                    }
+                }
+            }
+        }
+    }
+
     let mut impl_specific_deps: HashSet<String> = Default::default();
 
     for f in features_enabled_by_impl_feature.iter() {
         if let Some(stripped) = f.strip_prefix("dep:") {
             impl_specific_deps.insert(stripped.to_string());
+        }
+    }
+
+    // if a feature is pulled in by impl AND by some other feature,
+    // then we need to keep it.
+    for f in &features_enabled_by_other_features {
+        if let Some(stripped) = f.strip_prefix("dep:") {
+            impl_specific_deps.remove(stripped);
         }
     }
 
@@ -149,13 +176,14 @@ fn prepare_consumer_cargo_file(mod_info: &ModInfo) -> std::io::Result<String> {
     // Remove dylo dependency if it exists
     if let Some(deps) = doc.get_mut("dependencies") {
         if deps.is_table() {
-            deps.as_table_mut().unwrap().remove("dylo");
-        }
-    }
+            let deps_table = deps.as_table_mut().unwrap();
+            // Remove dylo from dependencies
+            deps_table.remove("dylo");
 
-    // Remove impl_specific_deps from dependencies
-    if let Some(dependencies) = doc.get_mut("dependencies") {
-        if let Some(deps_table) = dependencies.as_table_mut() {
+            // Add dylo-runtime as a dependency
+            deps_table.insert("dylo-runtime", DYLO_RUNTIME_VERSION.into());
+
+            // Remove impl_specific_deps from dependencies
             for dep_name in impl_specific_deps {
                 if deps_table.contains_key(&dep_name) {
                     tracing::info!("Removing implied dependency {dep_name}");

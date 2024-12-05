@@ -217,8 +217,7 @@ impl FileSet {
 }
 
 const SPEC_PATH: &str = ".dylo/spec.rs";
-const INIT_PATH: &str = ".dylo/init.rs";
-const LOAD_PATH: &str = ".dylo/load.rs";
+const SUPPORT_PATH: &str = ".dylo/support.rs";
 
 fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let mod_ts = mod_info
@@ -283,18 +282,41 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let spec_expanded = spec_ast.into_token_stream().to_string();
     let spec_formatted = rustfmt_wrapper::rustfmt(spec_expanded).unwrap();
 
-    con_items.insert(
-        0,
-        syn::parse_quote! {
-            include!("dylo/load.rs");
-        },
-    );
-    con_items.insert(
-        0,
-        syn::parse_quote! {
-            include!("dylo/spec.rs");
-        },
-    );
+    let mut missing_spec = true;
+    let mut missing_support = true;
+
+    for item in &con_items {
+        if let Item::Macro(mac) = item {
+            if mac.mac.path.is_ident("include") {
+                if let Ok(lit) = syn::parse2::<syn::LitStr>(mac.mac.tokens.clone()) {
+                    let path = lit.value();
+                    if path == SPEC_PATH {
+                        missing_spec = false;
+                    } else if path == SUPPORT_PATH {
+                        missing_support = false;
+                    }
+                }
+            }
+        }
+    }
+
+    if missing_spec {
+        con_items.insert(
+            0,
+            syn::parse_quote! {
+                include!(".dylo/spec.rs");
+            },
+        );
+    }
+
+    if missing_support {
+        con_items.insert(
+            0,
+            syn::parse_quote! {
+                include!(".dylo/support.rs");
+            },
+        );
+    }
 
     let con_ast = syn::File {
         shebang: None,
@@ -321,7 +343,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let init_src = include_str!("init_template.rs");
     mod_files
         .files
-        .insert(format!("src/{INIT_PATH}").into(), init_src.to_string());
+        .insert(format!("src/{SUPPORT_PATH}").into(), init_src.to_string());
 
     // Check for include statements for spec and init files
     let mut added_prefixes = Vec::new();
@@ -343,8 +365,8 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         added_prefixes.push(format!("include!(\"{SPEC_PATH}\");"));
     }
 
-    if !include_paths.contains(INIT_PATH) {
-        added_prefixes.push(format!("include!(\"{INIT_PATH}\");"));
+    if !include_paths.contains(SUPPORT_PATH) {
+        added_prefixes.push(format!("include!(\"{SUPPORT_PATH}\");"));
     }
 
     if !added_prefixes.is_empty() {
@@ -369,7 +391,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let load_src = include_str!("load_template.rs");
     con_files
         .files
-        .insert(format!("src/{LOAD_PATH}").into(), load_src.to_string());
+        .insert(format!("src/{SUPPORT_PATH}").into(), load_src.to_string());
 
     // Update mod files if different
     let mod_path = Utf8Path::new(&mod_info.mod_path);
@@ -391,14 +413,9 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         tracing::info!("🔨 Running cargo check for {}", mod_info.name);
         let start = std::time::Instant::now();
         let status = std::process::Command::new("cargo")
-            .args([
-                "check",
-                "--package",
-                &format!("con-{}", mod_info.name),
-                "--no-default-features",
-                "--features",
-                "consumer",
-            ])
+            .arg("check")
+            .arg("--package")
+            .arg(&mod_info.name)
             .status()?;
 
         let duration = start.elapsed();

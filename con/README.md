@@ -77,15 +77,99 @@ impl Client for ClientImpl {
 }
 ```
 
+## Dependencies
+
+Because the `con-XXX` crate is generated from the `mod-XXX` crate, it shares some dependencies
+with it: any types that appear in the public API must be available to the `con-XXX` crate as well.
+
+However, some types and functions and third-party crates are only used in the implemention. Those
+can be feature-gated both in the `Cargo.toml` manifest:
+
+```toml
+[package]
+name = "mod-clap"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# this is important for mods — the `con-` version of this crate will be a "rlib"
+crate-type = ["cdylib"]
+
+[dependencies]
+# camino types are used in the public API of this mod
+camino = "1"
+con = "1"
+
+# impl deps are marked "optional"
+clap = { version = "4.5.13", features = ["derive"], optional = true }
+
+[features]
+default = ["impl"]
+# ... and they are enabled by the "impl" feature, which is itself enabled by default
+impl = ["dep:clap"]
+```
+
+And in the `src/lib.rs` code itself:
+
+```rust
+#[cfg(feature = "impl")]
+#[derive(Default)]
+struct ModImpl;
+
+#[cfg_attr(feature = "impl", derive(Parser))]
+pub struct Args {
+    #[cfg_attr(feature = "impl", clap(default_value = "."))]
+    /// config file
+    pub path: Utf8PathBuf,
+}
+
+#[con::export]
+impl Mod for ModImpl {
+    fn parse(&self) -> Args {
+        Args::parse()
+    }
+}
+```
+
+In the `con` version of the crate, only the non-impl dependencies and items will remain:
+
+```toml
+# rough outline of what `con-cli` would generate for this `con-clap` crate
+
+[package]
+name = "con-clap"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# only the dependencies used in the public API
+camino = "1"
+```
+
+```rust
+// generated code for the public API
+pub struct Args {
+    /// config file
+    pub path: Utf8PathBuf,
+}
+
+pub trait Mod: Send + Sync + 'static {
+    fn parse(&self) -> Args;
+}
+```
+
+Note that filtering out items with `#[cfg(feature = "impl")]` isn't done via something like
+[-Zunpretty-expand](https://github.com/rust-lang/rust/issues/43364), for myriad reasons. It's
+done by parsing the AST with [syn](https://crates.io/crates/syn), removing offending items and
+attributes, then formatting the AST with rustfmt.
+
 ## Limitations
 
 con will expect all your exported traits to be [`dyn`](https://doc.rust-lang.org/std/keyword.dyn.html)-compatible (this used to be call "object safe")
 
 Here's a list of things you cannot do.
 
-### You cannot have generic type parameters
-
-Traits exported by con cannot have generic type parameters.
+### Traits cannot be generic over types
 
 ```rust
 // ❌ This won't work
@@ -95,9 +179,9 @@ impl Parser<T> for JsonParser<T> {
 }
 ```
 
-### You cannot have generic methods
+### Function arguments or return types cannot be generic
 
-Methods in exported traits cannot have generic type parameters. Use trait objects or concrete types instead:
+Methods in exported traits cannot have generic type parameters.
 
 ```rust
 // ❌ This won't work
@@ -119,6 +203,19 @@ impl Handler for MyHandler {
     fn process(&self, transform: impl Fn(u32) -> u32) -> impl Iterator<Item = u32>;
 }
 ```
+
+### You can be generic over lifetimes
+
+Unlike with type parameters, traits can be generic over lifetimes:
+
+```rust
+#[con::export]
+impl Parser<'a> for MyParser {
+    fn parse(&self, input: &'a str) -> Result<&'a str>;
+}
+```
+
+This works because lifetimes are erased at compile time and don't affect dynamic dispatch.
 
 ### You can (and should) use boxed trait objects
 
@@ -220,3 +317,15 @@ impl Builder for RequestBuilder {
 
 Essentially, as a consumer, we don't know the size of "Self" — so we need the indirection.
 References (`&self`, `&mut self`) are always fine.
+
+## Should `con` exist?
+
+Not really — much like [rubicon](https://github.com/bearcove/rubicon), all that
+should be possible in stable Rust, with support from the compiler, etc.
+
+Half the reason to bother with an approach like con's is to avoid unnecessary
+rebuilds. The _proper_ approach for that is being explored by other folks, see:
+
+  * [Downstream dependencies of a crate are rebuilt despite the changes not being public-facing #14604](https://github.com/rust-lang/cargo/issues/14604)
+
+However, I live in the today, and for now I'll stick to my horrible codegen hacks.

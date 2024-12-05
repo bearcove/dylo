@@ -12,6 +12,8 @@
 cargo install con-cli
 ```
 
+Note that con-cli needs `rustfmt` to be present at runtime.
+
 ## Usage
 
 The CLI expects to be run from the root of a Cargo workspace containing mod crates. It will:

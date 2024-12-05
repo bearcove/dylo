@@ -58,17 +58,8 @@ doesn't transform the token stream at all.
 It merely defines attributes like `[con::export]`, that a separate tool, `con-cli`, will look for,
 to know which trait definitions to generate.
 
-In short, running `con` in a workspace will:
+For more information, read crate-level documentations for:
 
-  * Find all crates whose name start with `mod-`
-  * Generating corresponding `con-` crates, containing:
-    * Data types (enums, structs, etc.)
-    * Traits (dyn-compatible ones, usually Send + Sync as well)
-  * Patch the `mod-` crate to `include!(".con/spec.rs")` so that the traits
-    are defined on that side, as well.
-  * Patch the `con-` crate to avoid depending on `con` there, remove all
-    dev dependencies, and remove the `impl` feature from "default" traits
-  * Add building and loading code to the `con-` crate itself
-
-The source for the `con-` crates is based on `src/lib.rs`, with the impl blocks removed, and
-anything with a `#[cfg(feature = "impl")]` removed (caveat: for now only top-level items).
+  * [con-cli](https://crates.io/crates/con-cli)
+  * [con](https://crates.io/crates/con)
+  * [con-loader](https://crates.io/crates/con-loader)

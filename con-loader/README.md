@@ -18,6 +18,14 @@ behavior of con-loader at runtime:
 In production, you probably want `CON_AUTOMATIC_MOD_BUILD` to be set to zero, as your mods
 should be pre-built, and put in the right place, next to the executable.
 
+> **Warning**
+> Make sure to build your mods with the `rubicon/import-globals` and `impl`
+> features enabled, just like `con-loader` would do.
+>
+> See the [rubicon docs](https://crates.io/crates/rubicon) for more details: essentially, your
+> mods need to refer to the same process-local and thread-local variables that your main app does,
+> or stuff like tokio etc. will break.
+
 That is, if your Cargo workspace looks like this:
 
 ```
@@ -46,3 +54,15 @@ workspace/
 
 Except it doesn't actually need to be in `target/debug/` of anywhere — this could all be
 in a container image under `/app` or whatever.
+
+## ABI Safety
+
+con-loader uses [rubicon](https://github.com/bearcove/rubicon) to ensure that the ABI of the
+module matches the ABI of the app they're being loaded into — this is not the concern of the
+"con" family of crates however.
+
+If you mess something up, you should get a detailed panic with colors and emojis explaining
+exactly what you got wrong.
+
+Note that if you need crates like tokio, tracing, eyre, etc. you should use their
+patched versions, see the [rubicon compatibility tracker](https://github.com/bearcove/rubicon/issues/3).

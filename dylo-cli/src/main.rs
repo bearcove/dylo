@@ -313,8 +313,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         attrs: autogen_attrs.clone(),
         items: spec_items,
     };
-    let spec_expanded = spec_ast.into_token_stream().to_string();
-    let spec_formatted = rustfmt_wrapper::rustfmt(spec_expanded).unwrap();
+    let spec_formatted = prettyplease::unparse(&spec_ast);
 
     let mut missing_spec = true;
     let mut missing_support = true;
@@ -351,8 +350,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         attrs: autogen_attrs.clone(),
         items: con_items,
     };
-    let con_expanded = con_ast.into_token_stream().to_string();
-    let con_formatted = rustfmt_wrapper::rustfmt(con_expanded).unwrap();
+    let con_formatted = prettyplease::unparse(&con_ast);
 
     tracing::info!(
         "📝 Parsed {} in {:.2}s, size: {} bytes",

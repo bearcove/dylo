@@ -490,28 +490,29 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     Ok(())
 }
 
-fn item_attributes(item: &Item) -> Option<&Vec<Attribute>> {
+fn item_attributes(item: &mut Item) -> Option<&mut Vec<Attribute>> {
     match item {
-        Item::Const(item) => Some(&item.attrs),
-        Item::Enum(item) => Some(&item.attrs),
-        Item::ExternCrate(item) => Some(&item.attrs),
-        Item::Fn(item) => Some(&item.attrs),
-        Item::ForeignMod(item) => Some(&item.attrs),
-        Item::Impl(item) => Some(&item.attrs),
-        Item::Macro(item) => Some(&item.attrs),
-        Item::Mod(item) => Some(&item.attrs),
-        Item::Static(item) => Some(&item.attrs),
-        Item::Struct(item) => Some(&item.attrs),
-        Item::Trait(item) => Some(&item.attrs),
-        Item::TraitAlias(item) => Some(&item.attrs),
-        Item::Type(item) => Some(&item.attrs),
-        Item::Union(item) => Some(&item.attrs),
-        Item::Use(item) => Some(&item.attrs),
+        Item::Const(item) => Some(&mut item.attrs),
+        Item::Enum(item) => Some(&mut item.attrs),
+        Item::ExternCrate(item) => Some(&mut item.attrs),
+        Item::Fn(item) => Some(&mut item.attrs),
+        Item::ForeignMod(item) => Some(&mut item.attrs),
+        Item::Impl(item) => Some(&mut item.attrs),
+        Item::Macro(item) => Some(&mut item.attrs),
+        Item::Mod(item) => Some(&mut item.attrs),
+        Item::Static(item) => Some(&mut item.attrs),
+        Item::Struct(item) => Some(&mut item.attrs),
+        Item::Trait(item) => Some(&mut item.attrs),
+        Item::TraitAlias(item) => Some(&mut item.attrs),
+        Item::Type(item) => Some(&mut item.attrs),
+        Item::Union(item) => Some(&mut item.attrs),
+        Item::Use(item) => Some(&mut item.attrs),
         Item::Verbatim(_) => None,
         _ => None,
     }
 }
 
+// recognizes `#[cfg(feature = "impl"]`
 fn is_cfg_feature_impl(attr: &Attribute) -> bool {
     if !attr.path().is_ident("cfg") {
         return false;
@@ -530,6 +531,32 @@ fn is_cfg_feature_impl(attr: &Attribute) -> bool {
     has_feature_impl
 }
 
+// recognizes `#[cfg(not(feature = "impl"))]`
+fn is_cfg_not_feature_impl(attr: &Attribute) -> bool {
+    if !attr.path().is_ident("cfg") {
+        return false;
+    }
+
+    let mut has_not = false;
+    let mut has_feature_impl = false;
+    let _ = attr.parse_nested_meta(|meta| {
+        if meta.path.is_ident("not") {
+            let _ = meta.parse_nested_meta(|meta| {
+                if meta.path.is_ident("feature") {
+                    let content = meta.input.to_string();
+                    if content == "= \"impl\"" {
+                        has_feature_impl = true;
+                    }
+                }
+                Ok(())
+            });
+            has_not = true;
+        }
+        Ok(())
+    });
+    has_not && has_feature_impl
+}
+
 fn is_cfg_test(attr: &Attribute) -> bool {
     if !attr.path().is_ident("cfg") {
         return false;
@@ -545,7 +572,7 @@ fn is_cfg_test(attr: &Attribute) -> bool {
     has_test
 }
 
-fn should_remove_item(item: &Item) -> bool {
+fn should_remove_item(item: &mut Item) -> bool {
     if let Some(attrs) = item_attributes(item) {
         for attr in attrs {
             if is_cfg_feature_impl(attr) || is_cfg_test(attr) {
@@ -580,7 +607,7 @@ impl InterfaceType {
     }
 }
 
-fn transform_ast(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
+pub(crate) fn transform_ast(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
     items.retain_mut(|item| {
         let mut keep = true;
 
@@ -627,7 +654,13 @@ fn transform_ast(items: &mut Vec<Item>, added_items: &mut Vec<Item>) {
 
         if should_remove_item(item) {
             keep = false
+        } else {
+            // remove any cfg(not(feature = "impl")) attributes
+            if let Some(attrs) = item_attributes(item) {
+                attrs.retain(|attr| !is_cfg_not_feature_impl(attr));
+            }
         }
+
         keep
     });
 }
@@ -817,3 +850,6 @@ fn main() -> std::io::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

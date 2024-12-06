@@ -28,7 +28,7 @@ should be pre-built, and put in the right place, next to the executable.
 
 That is, if your Cargo workspace looks like this:
 
-```
+```text,ignore
 workspace/
   Cargo.toml
   mods/
@@ -43,7 +43,7 @@ workspace/
 
 Then `dylo-runtime` expects a file hierarchy like this:
 
-```
+```text,ignore
 workspace/
   target/
     debug/

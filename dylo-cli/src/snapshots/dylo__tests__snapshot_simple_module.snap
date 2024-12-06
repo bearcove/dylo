@@ -1,0 +1,18 @@
+---
+source: dylo-cli/src/tests.rs
+expression: output
+snapshot_kind: text
+---
+fn not_impl_only() {}
+enum NotImplEnum {
+    Variant1,
+    Variant2,
+}
+impl NotImplEnum {
+    fn variant1(&self) -> u32 {
+        23
+    }
+}
+pub trait Mod: Send + Sync + 'static {
+    fn foo(&self) -> u32;
+}

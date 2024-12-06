@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.2...dylo-cli-v1.0.3) - 2024-12-06
+
+### Other
+
+- I suspect the presence of slashes gave us linker errors...
+
 ## [1.0.2](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.1...dylo-cli-v1.0.2) - 2024-12-05
 
 ### Other

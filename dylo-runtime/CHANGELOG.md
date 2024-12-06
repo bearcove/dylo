@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.2...dylo-runtime-v1.0.3) - 2024-12-06
+
+### Other
+
+- Add more details when we can't find the sources
+
 ## [1.0.2](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.1...dylo-runtime-v1.0.2) - 2024-12-06
 
 ### Other

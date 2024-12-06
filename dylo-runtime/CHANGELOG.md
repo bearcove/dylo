@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.3...dylo-runtime-v1.0.4) - 2024-12-06
+
+### Other
+
+- Remove cfg(not(feature = "impl")) attributes
+
 ## [1.0.3](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.2...dylo-runtime-v1.0.3) - 2024-12-06
 
 ### Other

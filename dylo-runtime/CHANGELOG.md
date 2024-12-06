@@ -7,19 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.2](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.1...dylo-cli-v1.0.2) - 2024-12-05
+## [1.0.1](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.0...dylo-runtime-v1.0.1) - 2024-12-05
 
 ### Other
 
-- Avoid 'dylo runtime is unused' warnings
+- Compat check
 - Yeah ok we need to expose rubicon features through dylo-runtime, a non-proc-macro crate
+- Change CON_ to DYLO_
 - Don't be so chatty
 - Default to finding everything, not necessarily under a mods/ folder
-- Suffix include! items
-- Add dylo-runtime, keep optional deps if they're enabled by other features
-
-## [1.0.1](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.0...dylo-cli-v1.0.1) - 2024-12-05
-
-### Other
-
-- Remove cfg_attr(feature = 'impl', etc.) attributes

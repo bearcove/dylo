@@ -79,8 +79,22 @@ fn get_paths(mod_name: &str) -> Paths {
         None
     }
 
-    let mod_srcdir = find_mod_dir(base_dir, mod_name)
-        .unwrap_or_else(|| panic!("Could not find mod source directory for mod {mod_name}"));
+    let mod_srcdir = match find_mod_dir(base_dir, mod_name) {
+        Some(dir) => dir,
+        None => {
+            eprintln!("❌ ================================================");
+            eprintln!("🚫 Error looking for source directory for module:");
+            eprintln!("  🔍 Module: \x1B[36m{mod_name}\x1B[0m");
+            eprintln!("  📂 Base dir: \x1B[33m{}\x1B[0m", base_dir.display());
+            eprintln!("================================================");
+            eprintln!();
+            eprintln!("📦 \x1B[1mdylo\x1B[0m (https://github.com/bearcove/dylo) is a dynamic loading solution");
+            eprintln!("🔧 that expects to find Rust source code for modules in a '\x1B[32mmod-{mod_name}\x1B[0m' directory,");
+            eprintln!("   or a pre-compiled library if builds are disabled via \x1B[35mDYLO_BUILD=0\x1B[0m");
+            eprintln!("================================================");
+            panic!("💥 Could not find source directory for module: {mod_name}");
+        }
+    };
     let cargo_target_dir = get_target_dir(mod_name);
 
     Paths {
@@ -138,6 +152,11 @@ fn spawn_reader_thread(
 }
 
 fn build_mod(mod_name: &'static str) {
+    let build_mode = BuildMod::from_env();
+    if !build_mode.should_build() {
+        return;
+    }
+
     let extensions = Extensions::get();
     let paths = get_paths(mod_name);
     let build_profile = if cfg!(debug_assertions) {
@@ -147,11 +166,6 @@ fn build_mod(mod_name: &'static str) {
     };
 
     let before_build = Instant::now();
-    let build_mode = BuildMod::from_env();
-
-    if !build_mode.should_build() {
-        return;
-    }
 
     let current_exe_path = std::env::current_exe().expect("Failed to get current executable path");
     let current_exe_folder = current_exe_path.parent().unwrap();

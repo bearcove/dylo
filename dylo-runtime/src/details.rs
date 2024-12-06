@@ -325,7 +325,7 @@ pub fn load_mod(mod_name: &'static str) -> AnyModRef {
 
     // note: we never dlclose the handle, on purpose.
 
-    let symbol_name = CString::new("https://github.com/bearcove/dylo").unwrap();
+    let symbol_name = CString::new("github.com_bearcove_dylo").unwrap();
     let init_sym = unsafe { dlsym(handle, symbol_name.as_ptr()) };
     if init_sym.is_null() {
         let err = unsafe { std::ffi::CStr::from_ptr(dlerror()) }

@@ -4,7 +4,7 @@ use dylo_runtime as _;
 ///
 /// See <https://github.com/bearcove/dylo>
 #[doc(hidden)]
-#[export_name = "https://github.com/bearcove/dylo"]
+#[export_name = "github.com_bearcove_dylo"]
 pub extern "Rust" fn awaken() -> &'static (dyn crate::Mod) {
     let m: crate::ModImpl = std::default::Default::default();
     let m: std::boxed::Box<dyn crate::Mod> = std::boxed::Box::new(m);

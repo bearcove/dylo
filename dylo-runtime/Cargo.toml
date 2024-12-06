@@ -1,6 +1,6 @@
 [package]
 name = "dylo-runtime"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 authors = ["Amos Wenger <amos@bearcove.net>"]
 description = "Dynamic library loader for con traits"

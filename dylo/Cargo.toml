@@ -13,3 +13,6 @@ rust-version = "1.83"
 
 [lib]
 proc-macro = true
+
+[dependencies]
+unsynn = "0.0.22"

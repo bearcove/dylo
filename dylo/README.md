@@ -104,7 +104,7 @@ can be feature-gated both in the `Cargo.toml` manifest:
 [package]
 name = "mod-cliargs"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 # mods are always cdylibs — this one will build into
@@ -155,7 +155,7 @@ In the consumer version of the crate, only the non-impl dependencies and items w
 [package]
 name = "cliargs"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # only the dependencies used in the public API

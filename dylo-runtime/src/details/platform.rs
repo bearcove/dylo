@@ -87,7 +87,7 @@ pub(crate) fn red(t: impl Display) -> impl Display {
 
 pub const RTLD_NOW: i32 = 0x2;
 
-extern "C" {
+unsafe extern "C" {
     pub fn dlopen(filename: *const i8, flags: i32) -> *mut std::ffi::c_void;
     pub fn dlsym(handle: *mut std::ffi::c_void, symbol: *const i8) -> *mut std::ffi::c_void;
     pub fn dlerror() -> *mut i8;

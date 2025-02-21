@@ -1,7 +1,7 @@
 [package]
 name = "dylo-runtime"
 version = "1.0.4"
-edition = "2021"
+edition = "2024"
 authors = ["Amos Wenger <amos@bearcove.net>"]
 description = "Dynamic library loader for con traits"
 license = "Apache-2.0 OR MIT"
@@ -9,7 +9,7 @@ readme = "README.md"
 repository = "https://github.com/bearcove/dylo"
 keywords = ["ffi", "dynamic-library", "loader"]
 categories = ["development-tools"]
-rust-version = "1.83"
+rust-version = "1.85"
 
 [dependencies]
 rubicon = "3.4.9"

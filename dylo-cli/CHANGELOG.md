@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.4...dylo-cli-v1.0.5) - 2025-02-22
+
+### Other
+
+- rust 1.85 / edition 2024
+
 ## [1.0.4](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.3...dylo-cli-v1.0.4) - 2024-12-06
 
 ### Other

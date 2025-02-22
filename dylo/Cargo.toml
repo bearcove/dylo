@@ -1,6 +1,6 @@
 [package]
 name = "dylo"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2024"
 authors = ["Amos Wenger <amos@bearcove.net>"]
 description = "Generate dyn-compatible traits with procedural macros"

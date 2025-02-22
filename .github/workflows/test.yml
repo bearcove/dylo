@@ -24,4 +24,4 @@ jobs:
         shell: bash
         run: |
           rustup toolchain install nightly --component miri
-          just
+          cargo +nightly t

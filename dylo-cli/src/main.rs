@@ -190,11 +190,15 @@ fn prepare_consumer_cargo_file(mod_info: &ModInfo) -> std::io::Result<String> {
             deps_table.insert("dylo-runtime", DYLO_RUNTIME_VERSION.into());
 
             // Remove impl_specific_deps from dependencies
+            let mut removed_deps = Vec::new();
             for dep_name in impl_specific_deps {
                 if deps_table.contains_key(&dep_name) {
-                    tracing::info!("Removing implied dependency {dep_name}");
+                    removed_deps.push(dep_name.clone());
                     deps_table.remove(&dep_name);
                 }
+            }
+            if !removed_deps.is_empty() {
+                tracing::info!("Removed {} deps ({})", removed_deps.len(), removed_deps.join(", "));
             }
         }
     }

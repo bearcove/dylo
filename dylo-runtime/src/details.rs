@@ -15,6 +15,17 @@ pub trait AnyMod: Send + Sync + 'static {}
 // the mod's vtable as well.
 pub type AnyModRef = &'static dyn AnyMod;
 
+static DYLO_DEBUG: LazyLock<bool> =
+    LazyLock::new(|| matches!(std::env::var("DYLO_DEBUG").as_deref(), Ok("1")));
+
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        if *DYLO_DEBUG {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 mod platform;
 
 #[derive(Debug)]
@@ -352,7 +363,7 @@ pub fn load_mod(mod_name: &'static str) -> AnyModRef {
     let init_fn: InitFn = unsafe { std::mem::transmute(init_sym) };
     let plugin = unsafe { init_fn() };
 
-    eprintln!(
+    debug!(
         "📦 Loaded \x1B[34m{mod_name}\x1B[0m in {:?}",
         before_load.elapsed()
     );

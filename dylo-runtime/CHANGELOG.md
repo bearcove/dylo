@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.5...dylo-runtime-v1.0.6) - 2025-03-01
+
+### Other
+
+- Make dylo quieter by default
+
 ## [1.0.5](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.4...dylo-runtime-v1.0.5) - 2025-02-22
 
 ### Other

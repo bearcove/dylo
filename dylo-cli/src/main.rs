@@ -198,7 +198,11 @@ fn prepare_consumer_cargo_file(mod_info: &ModInfo) -> std::io::Result<String> {
                 }
             }
             if !removed_deps.is_empty() {
-                tracing::info!("Removed {} deps ({})", removed_deps.len(), removed_deps.join(", "));
+                tracing::debug!(
+                    "Removed {} deps ({})",
+                    removed_deps.len(),
+                    removed_deps.join(", ")
+                );
             }
         }
     }
@@ -294,7 +298,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
         return Ok(());
     };
 
-    tracing::info!("📦 Processing mod {} (because {:?})", mod_info.name, reason);
+    tracing::debug!("📦 Processing mod {} (because {:?})", mod_info.name, reason);
 
     // Generate consumer version by parsing and filtering lib.rs
     let start = std::time::Instant::now();
@@ -356,7 +360,7 @@ fn process_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     };
     let con_formatted = prettyplease::unparse(&con_ast);
 
-    tracing::info!(
+    tracing::debug!(
         "📝 Parsed {} in {:.2}s, size: {} bytes",
         mod_info.name,
         duration.as_secs_f32(),

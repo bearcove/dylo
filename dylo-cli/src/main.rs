@@ -7,6 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use proc_macro2 as _;
 use quote::ToTokens;
 use syn::{Attribute, ImplItem, Item, Type};
+use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 const DYLO_RUNTIME_VERSION: &str = "1.0.0";
@@ -232,27 +233,56 @@ impl FileSet {
 
     /// True if any files are missing from disk or have different contents.
     fn is_different(&self, root: &Utf8Path) -> std::io::Result<bool> {
+        debug!(
+            "Checking {count} files for differences in {root}",
+            count = self.files.len(),
+            root = root
+        );
+        let mut missing_count = 0;
+        let mut changed_count = 0;
+
         for (rel_path, contents) in &self.files {
             let full_path = root.join(rel_path);
             if !full_path.exists() {
-                return Ok(true);
+                debug!("File missing: {full_path}");
+                missing_count += 1;
+                continue;
             }
+
             let disk_contents = fs_err::read_to_string(&full_path)?;
             if &disk_contents != contents {
-                return Ok(true);
+                debug!("File content different: {full_path}");
+                changed_count += 1;
             }
         }
-        Ok(false)
+
+        let is_diff = missing_count > 0 || changed_count > 0;
+        debug!(
+            "Found {total} differences: {missing} missing, {changed} changed in {root}",
+            total = missing_count + changed_count,
+            missing = missing_count,
+            changed = changed_count,
+            root = root
+        );
+
+        Ok(is_diff)
     }
 
     /// Write file contents to disk, creating parent directories as needed.
     fn commit(&self, root: &Utf8Path) -> std::io::Result<()> {
+        debug!(
+            "📝 Committing {count} files to {root}",
+            count = self.files.len(),
+            root = root
+        );
         for (rel_path, contents) in &self.files {
             let full_path = root.join(rel_path);
             if let Some(parent) = full_path.parent() {
+                debug!("Creating directory {parent}");
                 fs_err::create_dir_all(parent)?;
             }
-            fs_err::write(full_path, contents)?;
+            debug!("Writing file to {full_path} ({} bytes)", contents.len());
+            fs_err::write(&full_path, contents)?;
         }
         Ok(())
     }

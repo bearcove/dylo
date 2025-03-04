@@ -127,7 +127,7 @@ version = "1.0.2"
 
 [[package]]
 name = "dylo-cli"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "camino",
  "clap",

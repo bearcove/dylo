@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1](https://github.com/bearcove/dylo/compare/dylo-cli-v2.0.0...dylo-cli-v2.0.1) - 2025-03-04
+
+### Other
+
+- Migrate to clap for command line argument parsing
+
 ## [2.0.0](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.7...dylo-cli-v2.0.0) - 2025-03-04
 
 ### Added

@@ -212,8 +212,6 @@ pub fn find_mod_by_name(workspace_root: &Utf8Path, mod_name: &str) -> Option<Utf
 #[cfg(test)]
 mod tests {
     use super::*;
-    use insta::assert_snapshot;
-    use std::fs;
     use std::path::Path;
     use tempfile::tempdir;
 

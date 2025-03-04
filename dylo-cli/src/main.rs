@@ -850,154 +850,101 @@ enum Command {
     },
 }
 
-fn print_help() {
-    println!("dylo - Dynamic loading utility for Rust");
-    println!();
-    println!("USAGE:");
-    println!("    dylo <COMMAND> [OPTIONS]");
-    println!();
-    println!("COMMANDS:");
-    println!("    gen             Generate consumer crates from mod implementations");
-    println!("    add             Add dependencies to a mod");
-    println!("    rm              Remove dependencies from a mod");
-    println!();
-    println!("COMMON OPTIONS:");
-    println!("    -h, --help      Print help information");
-    println!();
-    println!("Run 'dylo <COMMAND> --help' for more information on a specific command");
-    std::process::exit(0);
-}
-
 fn parse_args() -> Command {
-    // Get the first argument which should be a subcommand
-    let mut args = std::env::args().skip(1);
-    let subcommand = args.next();
-    
-    match subcommand.as_deref() {
-        Some("-h") | Some("--help") => {
-            print_help();
-            std::process::exit(0); // This line will never be reached, but needed for type checking
+    let cli = clap::Command::new("dylo")
+        .about("Dynamic loading utility for Rust")
+        .subcommand_required(true)
+        .subcommand(
+            clap::Command::new("gen")
+                .about("Generate consumer crates from mod implementations")
+                .arg(
+                    clap::Arg::new("force")
+                        .long("force")
+                        .help("Force regeneration of all consumer crates")
+                        .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    clap::Arg::new("mod")
+                        .short('m')
+                        .long("mod")
+                        .help("Specify the mod to process")
+                        .value_name("NAME"),
+                ),
+        )
+        .subcommand(
+            clap::Command::new("add")
+                .about("Add dependencies to a mod")
+                .arg(
+                    clap::Arg::new("mod")
+                        .short('m')
+                        .long("mod")
+                        .help("Specify the mod to process")
+                        .value_name("NAME")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("impl")
+                        .short('i')
+                        .long("impl")
+                        .help("Mark dependencies as impl-only")
+                        .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    clap::Arg::new("deps")
+                        .help("Dependencies to add")
+                        .required(true)
+                        .num_args(1..)
+                        .value_parser(clap::value_parser!(String)),
+                ),
+        )
+        .subcommand(
+            clap::Command::new("rm")
+                .about("Remove dependencies from a mod")
+                .arg(
+                    clap::Arg::new("mod")
+                        .short('m')
+                        .long("mod")
+                        .help("Specify the mod to process")
+                        .value_name("NAME")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("deps")
+                        .help("Dependencies to remove")
+                        .required(true)
+                        .num_args(1..)
+                        .value_parser(clap::value_parser!(String)),
+                ),
+        );
+
+    let matches = cli.get_matches();
+
+    match matches.subcommand() {
+        Some(("gen", sub_matches)) => Command::Default {
+            force: sub_matches.get_flag("force"),
+            mod_name: sub_matches.get_one::<String>("mod").cloned(),
         },
-        
-        Some("gen") => {
-            // Parse gen subcommand arguments
-            let mut args = pico_args::Arguments::from_env();
-            
-            if args.contains(["-h", "--help"]) {
-                println!("dylo gen - Generate consumer crates from mod implementations");
-                println!();
-                println!("USAGE:");
-                println!("    dylo gen [OPTIONS]");
-                println!();
-                println!("OPTIONS:");
-                println!("    --force         Force regeneration of all consumer crates");
-                println!("    -m, --mod <n>   Specify the mod to process");
-                println!("    -h, --help      Print help information");
-                std::process::exit(0);
-            }
-            
-            Command::Default {
-                force: args.contains("--force"),
-                mod_name: args.opt_value_from_str(["-m", "--mod"]).unwrap(),
-            }
-        }
-        
-        Some("add") => {
-            // Parse add subcommand arguments
-            let mut sub_args = pico_args::Arguments::from_env();
-            
-            if sub_args.contains(["-h", "--help"]) {
-                println!("dylo add - Add dependencies to a mod");
-                println!();
-                println!("USAGE:");
-                println!("    dylo add [OPTIONS] <DEPS...>");
-                println!();
-                println!("OPTIONS:");
-                println!("    -m, --mod <n>   Specify the mod to process (required)");
-                println!("    -i, --impl      Mark dependencies as impl-only");
-                println!("    -h, --help      Print help information");
-                std::process::exit(0);
-            }
-            
-            let mod_name = sub_args
-                .opt_value_from_str(["-m", "--mod"])
+
+        Some(("add", sub_matches)) => Command::Add {
+            mod_name: sub_matches.get_one::<String>("mod").unwrap().clone(),
+            is_impl: sub_matches.get_flag("impl"),
+            deps: sub_matches
+                .get_many::<String>("deps")
                 .unwrap()
-                .expect("--mod is required for the add command");
-            
-            let is_impl = sub_args.contains(["-i", "--impl"]);
-            
-            let raw_deps = sub_args.finish();
-            if raw_deps.is_empty() {
-                eprintln!("Error: No dependencies specified");
-                std::process::exit(1);
-            }
-            
-            // Convert from OsString to String, requiring valid UTF-8
-            let deps = raw_deps.into_iter()
-                .map(|os_str| os_str.into_string().map_err(|os_str| {
-                    eprintln!("Error: Argument contains invalid UTF-8: '{}'", os_str.to_string_lossy());
-                    std::process::exit(1);
-                }))
-                .collect::<Result<Vec<String>, _>>()
-                .unwrap();
-            
-            Command::Add {
-                mod_name,
-                is_impl,
-                deps,
-            }
-        }
-        
-        Some("rm") => {
-            // Parse rm subcommand arguments
-            let mut sub_args = pico_args::Arguments::from_env();
-            
-            if sub_args.contains(["-h", "--help"]) {
-                println!("dylo rm - Remove dependencies from a mod");
-                println!();
-                println!("USAGE:");
-                println!("    dylo rm [OPTIONS] <DEPS...>");
-                println!();
-                println!("OPTIONS:");
-                println!("    -m, --mod <n>   Specify the mod to process (required)");
-                println!("    -h, --help      Print help information");
-                std::process::exit(0);
-            }
-            
-            let mod_name = sub_args
-                .opt_value_from_str(["-m", "--mod"])
+                .cloned()
+                .collect(),
+        },
+
+        Some(("rm", sub_matches)) => Command::Rm {
+            mod_name: sub_matches.get_one::<String>("mod").unwrap().clone(),
+            deps: sub_matches
+                .get_many::<String>("deps")
                 .unwrap()
-                .expect("--mod is required for the rm command");
-            
-            let raw_deps = sub_args.finish();
-            if raw_deps.is_empty() {
-                eprintln!("Error: No dependencies specified");
-                std::process::exit(1);
-            }
-            
-            // Convert from OsString to String, requiring valid UTF-8
-            let deps = raw_deps.into_iter()
-                .map(|os_str| os_str.into_string().map_err(|os_str| {
-                    eprintln!("Error: Argument contains invalid UTF-8: '{}'", os_str.to_string_lossy());
-                    std::process::exit(1);
-                }))
-                .collect::<Result<Vec<String>, _>>()
-                .unwrap();
-            
-            Command::Rm { mod_name, deps }
-        }
-        
-        Some(cmd) => {
-            eprintln!("Error: Unknown command '{}'", cmd);
-            eprintln!("Run 'dylo --help' for usage information");
-            std::process::exit(1);
-        }
-        
-        None => {
-            // No subcommand provided, show help
-            print_help();
-            std::process::exit(1);
-        }
+                .cloned()
+                .collect(),
+        },
+
+        _ => unreachable!("clap ensure we have a valid subcommand"),
     }
 }
 

@@ -959,17 +959,47 @@ fn parse_args() -> Command {
 fn main() -> std::io::Result<()> {
     setup_tracing_subscriber();
 
-    if !Utf8Path::new("Cargo.toml").exists() {
-        tracing::error!("❌ Must be run from the root of a Cargo workspace");
-        std::process::exit(1);
-    }
-
     let command = parse_args();
-    let workspace_root = Utf8Path::new(".");
+
+    // Find workspace root by looking for Cargo.toml or .git directory
+    let mut current_dir =
+        camino::Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap();
+
+    let workspace_root = loop {
+        let cargo_toml_path = current_dir.join("Cargo.toml");
+        let git_dir_path = current_dir.join(".git");
+
+        if cargo_toml_path.exists() {
+            // Found a Cargo.toml file, check if it's a workspace
+            let cargo_content = fs_err::read_to_string(&cargo_toml_path)?;
+            let doc = cargo_content.parse::<toml_edit::DocumentMut>().unwrap();
+
+            if doc.contains_key("workspace") {
+                // It's a workspace, use this as the root
+                tracing::debug!("Found workspace root at {current_dir}");
+                break current_dir;
+            }
+        }
+
+        if git_dir_path.exists() && git_dir_path.is_dir() {
+            // Found a .git directory without finding a workspace first, so error out
+            tracing::error!(
+                "Reached a Git repository at {current_dir} without finding a Cargo workspace"
+            );
+            std::process::exit(1);
+        }
+
+        // Try going up one directory
+        if !current_dir.pop() {
+            // Reached the filesystem root without finding anything
+            tracing::warn!("Could not find workspace root, using current directory");
+            break Utf8PathBuf::from(".");
+        }
+    };
 
     match command {
         Command::Default { force, mod_name } => {
-            let mut mods = list_mods(workspace_root)?;
+            let mut mods = list_mods(&workspace_root)?;
             tracing::info!("🔍 Found {} mods total", mods.len());
 
             if let Some(ref name) = mod_name {
@@ -991,7 +1021,7 @@ fn main() -> std::io::Result<()> {
             deps,
         } => {
             let mod_path =
-                dependency::find_mod_by_name(workspace_root, &mod_name).ok_or_else(|| {
+                dependency::find_mod_by_name(&workspace_root, &mod_name).ok_or_else(|| {
                     std::io::Error::new(
                         std::io::ErrorKind::NotFound,
                         format!("Mod '{}' not found", mod_name),
@@ -1011,7 +1041,7 @@ fn main() -> std::io::Result<()> {
         }
         Command::Rm { mod_name, deps } => {
             let mod_path =
-                dependency::find_mod_by_name(workspace_root, &mod_name).ok_or_else(|| {
+                dependency::find_mod_by_name(&workspace_root, &mod_name).ok_or_else(|| {
                     std::io::Error::new(
                         std::io::ErrorKind::NotFound,
                         format!("Mod '{}' not found", mod_name),

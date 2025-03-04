@@ -28,6 +28,7 @@ pico-args = "0.5.0"
 tracing = "0.1.41"
 prettyplease = "0.2.25"
 clap = "4.5.31"
+eyre = "0.6.12"
 
 [dev-dependencies]
 insta = "1.41.1"

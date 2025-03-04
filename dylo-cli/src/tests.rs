@@ -1,3 +1,5 @@
+use codegen::transform_ast;
+
 use super::*;
 
 #[test]

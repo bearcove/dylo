@@ -10,6 +10,9 @@ use syn::{Attribute, ImplItem, Item, Type};
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
+// note: init_template and load_template are NOT modules here
+mod dependency;
+
 const DYLO_RUNTIME_VERSION: &str = "1.0.0";
 
 /// represents a mod crate we're managing, including both its impl & consumer versions.
@@ -831,29 +834,170 @@ fn setup_tracing_subscriber() {
         .init();
 }
 
-struct Args {
-    force: bool,
-    mod_name: Option<String>,
+enum Command {
+    Default {
+        force: bool,
+        mod_name: Option<String>,
+    },
+    Add {
+        mod_name: String,
+        is_impl: bool,
+        deps: Vec<String>,
+    },
+    Rm {
+        mod_name: String,
+        deps: Vec<String>,
+    },
 }
 
-fn parse_args() -> Args {
-    let mut args = pico_args::Arguments::from_env();
+fn print_help() {
+    println!("dylo - Dynamic loading utility for Rust");
+    println!();
+    println!("USAGE:");
+    println!("    dylo <COMMAND> [OPTIONS]");
+    println!();
+    println!("COMMANDS:");
+    println!("    gen             Generate consumer crates from mod implementations");
+    println!("    add             Add dependencies to a mod");
+    println!("    rm              Remove dependencies from a mod");
+    println!();
+    println!("COMMON OPTIONS:");
+    println!("    -h, --help      Print help information");
+    println!();
+    println!("Run 'dylo <COMMAND> --help' for more information on a specific command");
+    std::process::exit(0);
+}
 
-    if args.contains(["-h", "--help"]) {
-        println!("Generate consumer crates from mod implementations in a Cargo workspace");
-        println!();
-        println!("Usage: con [OPTIONS]");
-        println!();
-        println!("Options:");
-        println!("  --force         Force regeneration of all consumer crates");
-        println!("  --mod <NAME>    Only process the specified mod");
-        println!("  -h, --help      Print help information");
-        std::process::exit(0);
-    }
-
-    Args {
-        force: args.contains("--force"),
-        mod_name: args.opt_value_from_str("--mod").unwrap(),
+fn parse_args() -> Command {
+    // Get the first argument which should be a subcommand
+    let mut args = std::env::args().skip(1);
+    let subcommand = args.next();
+    
+    match subcommand.as_deref() {
+        Some("-h") | Some("--help") => {
+            print_help();
+            std::process::exit(0); // This line will never be reached, but needed for type checking
+        },
+        
+        Some("gen") => {
+            // Parse gen subcommand arguments
+            let mut args = pico_args::Arguments::from_env();
+            
+            if args.contains(["-h", "--help"]) {
+                println!("dylo gen - Generate consumer crates from mod implementations");
+                println!();
+                println!("USAGE:");
+                println!("    dylo gen [OPTIONS]");
+                println!();
+                println!("OPTIONS:");
+                println!("    --force         Force regeneration of all consumer crates");
+                println!("    -m, --mod <n>   Specify the mod to process");
+                println!("    -h, --help      Print help information");
+                std::process::exit(0);
+            }
+            
+            Command::Default {
+                force: args.contains("--force"),
+                mod_name: args.opt_value_from_str(["-m", "--mod"]).unwrap(),
+            }
+        }
+        
+        Some("add") => {
+            // Parse add subcommand arguments
+            let mut sub_args = pico_args::Arguments::from_env();
+            
+            if sub_args.contains(["-h", "--help"]) {
+                println!("dylo add - Add dependencies to a mod");
+                println!();
+                println!("USAGE:");
+                println!("    dylo add [OPTIONS] <DEPS...>");
+                println!();
+                println!("OPTIONS:");
+                println!("    -m, --mod <n>   Specify the mod to process (required)");
+                println!("    -i, --impl      Mark dependencies as impl-only");
+                println!("    -h, --help      Print help information");
+                std::process::exit(0);
+            }
+            
+            let mod_name = sub_args
+                .opt_value_from_str(["-m", "--mod"])
+                .unwrap()
+                .expect("--mod is required for the add command");
+            
+            let is_impl = sub_args.contains(["-i", "--impl"]);
+            
+            let raw_deps = sub_args.finish();
+            if raw_deps.is_empty() {
+                eprintln!("Error: No dependencies specified");
+                std::process::exit(1);
+            }
+            
+            // Convert from OsString to String, requiring valid UTF-8
+            let deps = raw_deps.into_iter()
+                .map(|os_str| os_str.into_string().map_err(|os_str| {
+                    eprintln!("Error: Argument contains invalid UTF-8: '{}'", os_str.to_string_lossy());
+                    std::process::exit(1);
+                }))
+                .collect::<Result<Vec<String>, _>>()
+                .unwrap();
+            
+            Command::Add {
+                mod_name,
+                is_impl,
+                deps,
+            }
+        }
+        
+        Some("rm") => {
+            // Parse rm subcommand arguments
+            let mut sub_args = pico_args::Arguments::from_env();
+            
+            if sub_args.contains(["-h", "--help"]) {
+                println!("dylo rm - Remove dependencies from a mod");
+                println!();
+                println!("USAGE:");
+                println!("    dylo rm [OPTIONS] <DEPS...>");
+                println!();
+                println!("OPTIONS:");
+                println!("    -m, --mod <n>   Specify the mod to process (required)");
+                println!("    -h, --help      Print help information");
+                std::process::exit(0);
+            }
+            
+            let mod_name = sub_args
+                .opt_value_from_str(["-m", "--mod"])
+                .unwrap()
+                .expect("--mod is required for the rm command");
+            
+            let raw_deps = sub_args.finish();
+            if raw_deps.is_empty() {
+                eprintln!("Error: No dependencies specified");
+                std::process::exit(1);
+            }
+            
+            // Convert from OsString to String, requiring valid UTF-8
+            let deps = raw_deps.into_iter()
+                .map(|os_str| os_str.into_string().map_err(|os_str| {
+                    eprintln!("Error: Argument contains invalid UTF-8: '{}'", os_str.to_string_lossy());
+                    std::process::exit(1);
+                }))
+                .collect::<Result<Vec<String>, _>>()
+                .unwrap();
+            
+            Command::Rm { mod_name, deps }
+        }
+        
+        Some(cmd) => {
+            eprintln!("Error: Unknown command '{}'", cmd);
+            eprintln!("Run 'dylo --help' for usage information");
+            std::process::exit(1);
+        }
+        
+        None => {
+            // No subcommand provided, show help
+            print_help();
+            std::process::exit(1);
+        }
     }
 }
 
@@ -865,23 +1009,70 @@ fn main() -> std::io::Result<()> {
         std::process::exit(1);
     }
 
-    let args = parse_args();
-    let mods_dir = Utf8Path::new(".");
+    let command = parse_args();
+    let workspace_root = Utf8Path::new(".");
 
-    let mut mods = list_mods(mods_dir)?;
-    tracing::info!("🔍 Found {} mods total", mods.len());
+    match command {
+        Command::Default { force, mod_name } => {
+            let mut mods = list_mods(workspace_root)?;
+            tracing::info!("🔍 Found {} mods total", mods.len());
 
-    if let Some(ref name) = args.mod_name {
-        mods.retain(|m| m.name == *name);
-        if mods.is_empty() {
-            tracing::error!("❌ No mod found with name '{name}'");
-            std::process::exit(1);
+            if let Some(ref name) = mod_name {
+                mods.retain(|m| m.name == *name);
+                if mods.is_empty() {
+                    tracing::error!("❌ No mod found with name '{name}'");
+                    std::process::exit(1);
+                }
+                tracing::info!("🔍 Filtered to process mod '{name}'");
+            }
+
+            for mod_info in mods {
+                process_mod(mod_info, force)?;
+            }
         }
-        tracing::info!("🔍 Filtered to process mod '{name}'");
-    }
+        Command::Add {
+            mod_name,
+            is_impl,
+            deps,
+        } => {
+            let mod_path =
+                dependency::find_mod_by_name(workspace_root, &mod_name).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("Mod '{}' not found", mod_name),
+                    )
+                })?;
 
-    for mod_info in mods {
-        process_mod(mod_info, args.force)?;
+            tracing::info!(
+                "Adding dependencies to mod '{}': {}{}",
+                mod_name,
+                deps.join(", "),
+                if is_impl { " (impl-only)" } else { "" }
+            );
+
+            dependency::add_dependency(&mod_path, &deps, is_impl)?;
+
+            tracing::info!("✅ Dependencies added successfully");
+        }
+        Command::Rm { mod_name, deps } => {
+            let mod_path =
+                dependency::find_mod_by_name(workspace_root, &mod_name).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("Mod '{}' not found", mod_name),
+                    )
+                })?;
+
+            tracing::info!(
+                "Removing dependencies from mod '{}': {}",
+                mod_name,
+                deps.join(", ")
+            );
+
+            dependency::remove_dependency(&mod_path, &deps)?;
+
+            tracing::info!("✅ Dependencies removed successfully");
+        }
     }
 
     Ok(())

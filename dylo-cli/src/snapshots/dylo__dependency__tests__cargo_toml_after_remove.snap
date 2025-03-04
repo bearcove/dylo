@@ -1,0 +1,20 @@
+---
+source: dylo-cli/src/dependency.rs
+expression: final_content
+snapshot_kind: text
+---
+[package]
+name = "mod-test"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dylo = "1.0.0"
+serde = "1.0.218"
+
+[features]
+default = []
+impl = []

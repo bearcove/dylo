@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.7...dylo-cli-v2.0.0) - 2025-03-04
+
+### Added
+
+- *(dylo-cli)* [**breaking**] implement add/remove dependency commands
+
+### Other
+
+- Remove unnecessary deps
+- more debugging
+
 ## [1.0.7](https://github.com/bearcove/dylo/compare/dylo-cli-v1.0.6...dylo-cli-v1.0.7) - 2025-03-01
 
 ### Other

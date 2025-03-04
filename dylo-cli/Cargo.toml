@@ -30,3 +30,4 @@ prettyplease = "0.2.25"
 
 [dev-dependencies]
 insta = "1.41.1"
+tempfile = "3.10.1"

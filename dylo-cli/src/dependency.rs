@@ -215,6 +215,9 @@ mod tests {
     use std::path::Path;
     use tempfile::tempdir;
 
+    const TOKIO_VERSION: &str = "1.43.0";
+    const SERDE_VERSION: &str = "1.0.218";
+
     // Note: These tests run real `cargo` commands in isolated temporary directories.
     // The cargo binary must be available in the PATH for these tests to work.
     // All operations are contained in the temporary directories, so they won't
@@ -276,10 +279,10 @@ resolver = "3"
         let (dir, mod_path) = setup_test_workspace();
 
         // Add a regular dependency
-        add_dependency(&mod_path, &["serde".to_string()], false).unwrap();
+        add_dependency(&mod_path, &[format!("serde@{SERDE_VERSION}")], false).unwrap();
 
         // Add an impl-only dependency
-        add_dependency(&mod_path, &["tokio".to_string()], true).unwrap();
+        add_dependency(&mod_path, &[format!("tokio@{TOKIO_VERSION}")], true).unwrap();
 
         // Read the final Cargo.toml content and create a snapshot
         let final_content = fs_err::read_to_string(mod_path.join("Cargo.toml")).unwrap();
@@ -294,8 +297,8 @@ resolver = "3"
         let (dir, mod_path) = setup_test_workspace();
 
         // First add both dependencies
-        add_dependency(&mod_path, &["serde".to_string()], false).unwrap();
-        add_dependency(&mod_path, &["tokio".to_string()], true).unwrap();
+        add_dependency(&mod_path, &[format!("serde@{SERDE_VERSION}")], false).unwrap();
+        add_dependency(&mod_path, &[format!("tokio@{TOKIO_VERSION}")], true).unwrap();
 
         // Then remove the impl-only dependency
         remove_dependency(&mod_path, &["tokio".to_string()]).unwrap();

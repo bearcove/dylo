@@ -12,6 +12,17 @@ pub fn run_command(workspace_root: camino::Utf8PathBuf, command: DyloCommand) ->
                 codegen_mod(mod_info, force)?;
             }
         }
+        DyloCommand::List { scope } => {
+            let mods = list_mods(&workspace_root, scope)?;
+            if mods.is_empty() {
+                eprintln!("No dylo modules found in {workspace_root}.");
+                eprintln!("dylo looks for any Cargo workspace item that starts with `mod-`");
+            } else {
+                for mod_info in mods {
+                    println!("{}", mod_info.name);
+                }
+            }
+        }
         DyloCommand::Add {
             is_impl,
             deps,
@@ -116,6 +127,15 @@ pub fn parse_args(ambient_scope: Scope) -> DyloCommand {
                         .num_args(1..)
                         .value_parser(clap::value_parser!(String)),
                 ),
+        )
+        .subcommand(
+            clap::Command::new("list").about("List available mods").arg(
+                clap::Arg::new("workspace")
+                    .short('w')
+                    .long("workspace")
+                    .help("List all mods in the workspace")
+                    .action(clap::ArgAction::SetTrue),
+            ),
         );
 
     let matches = cli.get_matches();
@@ -197,6 +217,16 @@ pub fn parse_args(ambient_scope: Scope) -> DyloCommand {
                     .cloned()
                     .collect(),
             }
+        }
+
+        Some(("list", sub_matches)) => {
+            let scope = if sub_matches.get_flag("workspace") {
+                Scope::Workspace
+            } else {
+                ambient_scope
+            };
+
+            DyloCommand::List { scope }
         }
 
         _ => unreachable!("clap ensures we have a valid subcommand"),

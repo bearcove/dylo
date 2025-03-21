@@ -40,6 +40,9 @@ pub enum DyloCommand {
         force: bool,
         scope: Scope,
     },
+    List {
+        scope: Scope,
+    },
     Add {
         scope: Scope,
         is_impl: bool,

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.4.0](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.6...dylo-runtime-v2.4.0) - 2025-03-22
+## [2.5.0](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.6...dylo-runtime-v2.5.0) - 2025-03-22
 
 ### Added
 

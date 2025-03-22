@@ -61,23 +61,10 @@ impl SearchPaths {
         });
         debug!("Current executable path: {}", blue(exe_path.display()));
 
-        let real_exe_path = match exe_path.symlink_metadata() {
-            Ok(metadata) => {
-                if metadata.file_type().is_symlink() {
-                    match std::fs::read_link(&exe_path) {
-                        Ok(real_path) => real_path,
-                        Err(e) => {
-                            debug!("Failed to read symlink: {e}");
-                            exe_path.clone()
-                        }
-                    }
-                } else {
-                    debug!("Executable is not a symlink");
-                    exe_path.clone()
-                }
-            }
+        let real_exe_path = match exe_path.canonicalize() {
+            Ok(canonical_path) => canonical_path,
             Err(e) => {
-                debug!("Failed to get symlink metadata: {e}");
+                debug!("Failed to canonicalize executable path: {e}");
                 exe_path.clone()
             }
         };
@@ -123,14 +110,14 @@ impl SearchPaths {
 
         for path in &self.paths {
             let full_path = path.join(&file_name);
-            debug!("Looking for module in: {}", full_path.display());
+            debug!("Looking for module in: {}", blue(full_path.display()));
             if full_path.exists() {
-                debug!("Found module at: {}", full_path.display());
+                debug!("Found module at: {}", blue(full_path.display()));
                 return Some(full_path);
             }
         }
 
-        debug!("Module not found: {}", mod_name);
+        debug!("Module not found: {}", blue(mod_name));
         None
     }
 }

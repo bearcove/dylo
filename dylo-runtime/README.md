@@ -13,6 +13,8 @@ dylo used to build modules, but now it just loads them — it will look for them
   * `$DYLO_MOD_DIR` (if set)
   * `@executable_path/../lib/`
   * `@executable_path/`
+  * `@executable_path/../../lib/release/`
+    * This takes care of cases where the binary is built into `target/bin/release/my-app`, and the modules are in `target/lib/release/libmod_blah.dylib`
 
 Where `@executable_path` is the return value of <https://doc.rust-lang.org/stable/std/env/fn.current_exe.html>
 

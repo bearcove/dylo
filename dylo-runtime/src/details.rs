@@ -58,9 +58,9 @@ impl SearchPaths {
         match std::env::current_exe() {
             Ok(exe_path) => match exe_path.parent() {
                 Some(exe_dir) => {
-                    paths.push(exe_dir.join("../lib"));
+                    paths.push(exe_dir.join("../libexec"));
                     paths.push(exe_dir.to_path_buf());
-                    paths.push(exe_dir.join("../../lib/release"));
+                    paths.push(exe_dir.join("../../libexec/release"));
                 }
                 None => debug!(
                     "Unable to get parent directory of executable: {}",

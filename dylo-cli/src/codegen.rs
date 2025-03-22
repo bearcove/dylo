@@ -5,9 +5,9 @@ use quote::ToTokens;
 use syn::{Attribute, ImplItem, Item, Type};
 
 use crate::{
-    types::{ModInfo, ProcessReason, DYLO_RUNTIME_VERSION},
-    workspace::FileSet,
     SPEC_PATH, SUPPORT_PATH,
+    types::{DYLO_RUNTIME_VERSION, ModInfo, ProcessReason},
+    workspace::FileSet,
 };
 
 pub fn codegen_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
@@ -132,17 +132,23 @@ pub fn codegen_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
     let mut doc = cargo_toml.parse::<toml_edit::DocumentMut>().unwrap();
 
     let mut need_dylo_runtime = true;
+    let mut current_version = None;
     if let Some(deps) = doc.get("dependencies") {
         if deps.is_table() {
             let deps_table = deps.as_table().unwrap();
-            if deps_table.contains_key("dylo-runtime") {
+            if let Some(runtime_dep) = deps_table.get("dylo-runtime") {
                 need_dylo_runtime = false;
+                current_version = runtime_dep.as_str().map(|s| s.to_string());
             }
         }
     }
 
-    if need_dylo_runtime {
-        tracing::info!("Adding dylo-runtime dependency to {}", mod_info.name);
+    if need_dylo_runtime || current_version.as_deref() != Some(DYLO_RUNTIME_VERSION) {
+        tracing::info!(
+            "Adding or updating dylo-runtime dependency to {} for {}",
+            DYLO_RUNTIME_VERSION,
+            mod_info.name
+        );
         if let Some(deps) = doc.get_mut("dependencies") {
             if deps.is_table() {
                 let deps_table = deps.as_table_mut().unwrap();

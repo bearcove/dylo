@@ -127,7 +127,7 @@ version = "1.0.3"
 
 [[package]]
 name = "dylo-cli"
-version = "3.0.2"
+version = "4.0.0"
 dependencies = [
  "camino",
  "clap",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "dylo-runtime"
-version = "1.0.7"
+version = "2.0.0"
 dependencies = [
  "rubicon",
 ]

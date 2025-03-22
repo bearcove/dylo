@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.6...dylo-runtime-v2.0.0) - 2025-03-22
+
+### Added
+
+- [**breaking**] Disable dylo's building functionality, have it look in `../lib`
+
 ## [1.0.6](https://github.com/bearcove/dylo/compare/dylo-runtime-v1.0.5...dylo-runtime-v1.0.6) - 2025-03-01
 
 ### Other

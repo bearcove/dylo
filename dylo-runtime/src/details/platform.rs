@@ -3,24 +3,19 @@ use std::{fmt::Display, sync::LazyLock};
 #[derive(Debug)]
 pub(crate) struct Extensions {
     pub lib: &'static str,
-    pub dbg: &'static str,
 }
 
 impl Extensions {
     pub(crate) fn get() -> &'static Extensions {
         static EXTENSIONS: LazyLock<Extensions> = LazyLock::new(|| {
             if cfg!(target_os = "macos") {
-                Extensions {
-                    lib: "dylib",
-                    dbg: "dSYM",
-                }
+                Extensions { lib: "dylib" }
             } else if cfg!(target_os = "linux") {
-                Extensions {
-                    lib: "so",
-                    dbg: "so.dwp",
-                }
+                Extensions { lib: "so" }
             } else {
-                panic!("Unsupported operating system - https://github.com/bearcove/dylo only supports MacOS and Linux for now");
+                panic!(
+                    "Unsupported operating system - https://github.com/bearcove/dylo only supports MacOS and Linux for now"
+                );
             }
         });
 
@@ -81,6 +76,7 @@ pub(crate) fn blue(t: impl Display) -> impl Display {
     colorize(34, t)
 }
 
+#[allow(dead_code)]
 pub(crate) fn red(t: impl Display) -> impl Display {
     colorize(31, t)
 }

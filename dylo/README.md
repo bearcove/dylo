@@ -12,7 +12,7 @@ for when generating consumer crates.
 
 ## Usage
 
-Slap `#[dylo::export]` on impl blocks whose trait you want `dylo-cli` to genaerte:
+Slap `#[dylo::export]` on impl blocks whose trait you want `dylo-cli` to generate:
 
 ```rust
 #[dylo::export]

@@ -10,7 +10,11 @@ use crate::{
     workspace::FileSet,
 };
 
-pub fn codegen_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
+pub fn codegen_mod(
+    workspace_root: &Utf8Path,
+    mod_info: ModInfo,
+    force: bool,
+) -> std::io::Result<()> {
     let mod_ts = mod_info
         .mod_timestamp
         .duration_since(std::time::UNIX_EPOCH)
@@ -237,6 +241,7 @@ pub fn codegen_mod(mod_info: ModInfo, force: bool) -> std::io::Result<()> {
             .arg("check")
             .arg("--package")
             .arg(&mod_info.name)
+            .current_dir(workspace_root)
             .status()?;
 
         let duration = start.elapsed();

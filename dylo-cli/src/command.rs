@@ -9,7 +9,7 @@ pub fn run_command(workspace_root: camino::Utf8PathBuf, command: DyloCommand) ->
     match command {
         DyloCommand::Default { scope, force } => {
             for mod_info in list_mods(&workspace_root, scope)? {
-                codegen_mod(mod_info, force)?;
+                codegen_mod(&workspace_root, mod_info, force)?;
             }
         }
         DyloCommand::List { scope } => {

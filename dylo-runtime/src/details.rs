@@ -55,19 +55,21 @@ impl SearchPaths {
             debug!("(note: you can set $DYLO_MOD_DIR to prepend your own search path)");
         }
 
-        match std::env::current_exe() {
-            Ok(exe_path) => match exe_path.parent() {
-                Some(exe_dir) => {
-                    paths.push(exe_dir.join("../libexec"));
-                    paths.push(exe_dir.to_path_buf());
-                    paths.push(exe_dir.join("../../libexec/release"));
-                }
-                None => debug!(
-                    "Unable to get parent directory of executable: {}",
-                    blue(exe_path.display())
-                ),
-            },
-            Err(e) => debug!("Unable to get current executable path: {e}"),
+        let exe_path = std::env::current_exe()
+            .map(|p| p.canonicalize().unwrap_or(p))
+            .unwrap_or_else(|e| {
+                debug!("Unable to get current executable path: {e}");
+                PathBuf::new()
+            });
+        if let Some(exe_dir) = exe_path.parent() {
+            paths.push(exe_dir.join("../libexec"));
+            paths.push(exe_dir.to_path_buf());
+            paths.push(exe_dir.join("../../libexec/release"));
+        } else {
+            debug!(
+                "Unable to get parent directory of executable: {}",
+                blue(exe_path.display())
+            );
         }
 
         for path in &paths {

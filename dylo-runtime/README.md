@@ -16,7 +16,10 @@ dylo used to build modules, but now it just loads them — it will look for them
   * `@executable_path/../../libexec/release/`
     * This takes care of cases where the binary is built into `target/bin/release/my-app`, and the modules are in `target/libexec/release/libmod_blah.dylib`
 
-Where `@executable_path` is the return value of <https://doc.rust-lang.org/stable/std/env/fn.current_exe.html>
+Where `@executable_path` is the return value of <https://doc.rust-lang.org/stable/std/env/fn.current_exe.html>.
+
+*Note: if the returned value of `current_exe` is a symlink, it will be canonicalized first — ie., we'll search
+against the path it points to*
 
 (The libexec nomenclature comes from [homebrew](https://brew.sh) — you typically don't want to link your dylo modules into the homebrew prefix — they're "private-use,
 see <https://apple.stackexchange.com/questions/277606/why-are-all-the-homebrew-formulas-located-in-the-libexec-folder>)

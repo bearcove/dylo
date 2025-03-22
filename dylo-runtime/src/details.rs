@@ -55,20 +55,58 @@ impl SearchPaths {
             debug!("(note: you can set $DYLO_MOD_DIR to prepend your own search path)");
         }
 
-        let exe_path = std::env::current_exe()
-            .map(|p| p.canonicalize().unwrap_or(p))
-            .unwrap_or_else(|e| {
-                debug!("Unable to get current executable path: {e}");
-                PathBuf::new()
-            });
-        if let Some(exe_dir) = exe_path.parent() {
-            paths.push(exe_dir.join("../libexec"));
-            paths.push(exe_dir.to_path_buf());
-            paths.push(exe_dir.join("../../libexec/release"));
+        let exe_path = std::env::current_exe().unwrap_or_else(|e| {
+            debug!("Unable to get current executable path: {e}");
+            PathBuf::new()
+        });
+        debug!("Current executable path: {}", blue(exe_path.display()));
+
+        let real_exe_path = match exe_path.symlink_metadata() {
+            Ok(metadata) => {
+                if metadata.file_type().is_symlink() {
+                    match std::fs::read_link(&exe_path) {
+                        Ok(real_path) => real_path,
+                        Err(e) => {
+                            debug!("Failed to read symlink: {e}");
+                            exe_path.clone()
+                        }
+                    }
+                } else {
+                    debug!("Executable is not a symlink");
+                    exe_path.clone()
+                }
+            }
+            Err(e) => {
+                debug!("Failed to get symlink metadata: {e}");
+                exe_path.clone()
+            }
+        };
+        debug!("Real executable path: {}", blue(real_exe_path.display()));
+
+        if let Some(exe_dir) = real_exe_path.parent() {
+            debug!("Executable directory: {}", blue(exe_dir.display()));
+            let potential_paths = vec![
+                exe_dir.join("../libexec"),
+                exe_dir.join("../../libexec/release"),
+                exe_dir.to_path_buf(),
+            ];
+
+            for path in potential_paths {
+                match path.canonicalize() {
+                    Ok(canonical_path) => {
+                        debug!("Canonical path: {}", blue(canonical_path.display()));
+                        paths.push(canonical_path);
+                    }
+                    Err(e) => {
+                        debug!("Error canonicalizing path {}: {}", blue(path.display()), e);
+                        paths.push(path);
+                    }
+                }
+            }
         } else {
             debug!(
                 "Unable to get parent directory of executable: {}",
-                blue(exe_path.display())
+                blue(real_exe_path.display())
             );
         }
 

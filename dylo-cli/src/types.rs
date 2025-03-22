@@ -1,7 +1,7 @@
 use camino::Utf8PathBuf;
 use std::time::SystemTime;
 
-pub const DYLO_RUNTIME_VERSION: &str = "2.2.0";
+pub const DYLO_RUNTIME_VERSION: &str = "2.3.0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Scope {

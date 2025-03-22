@@ -1,6 +1,6 @@
 
 test:
-  cargo t
+    cargo t
 
 publish:
-  cargo +nightly -Z package-workspace publish --workspace
+    cargo ws publish

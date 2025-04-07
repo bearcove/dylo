@@ -81,7 +81,7 @@ pub(crate) fn red(t: impl Display) -> impl Display {
     colorize(31, t)
 }
 
-pub const RTLD_NOW: i32 = 0x2;
+pub const RTLD_LAZY: i32 = 0x1;
 
 unsafe extern "C" {
     pub fn dlopen(filename: *const i8, flags: i32) -> *mut std::ffi::c_void;

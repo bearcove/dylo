@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Instant;
 
-use platform::{Extensions, RTLD_NOW, blue, dlerror, dlopen, dlsym};
+use platform::{Extensions, RTLD_LAZY, blue, dlerror, dlopen, dlsym};
 
 // dummy trait just so we can make fat pointers
 pub trait AnyMod: Send + Sync + 'static {}
@@ -149,9 +149,9 @@ pub fn load_mod(mod_name: &'static str) -> AnyModRef {
     let before_load = Instant::now();
 
     let dylib_path = CString::new(dylib_path.to_str().unwrap()).expect("Invalid path");
-    let handle = unsafe { dlopen(dylib_path.as_ptr(), RTLD_NOW) };
+    let handle = unsafe { dlopen(dylib_path.as_ptr() as *const _, RTLD_LAZY) };
     if handle.is_null() {
-        let err = unsafe { std::ffi::CStr::from_ptr(dlerror()) }
+        let err = unsafe { std::ffi::CStr::from_ptr(dlerror() as *const _) }
             .to_string_lossy()
             .into_owned();
         panic!("Failed to load dynamic library: {}", err);
@@ -160,9 +160,9 @@ pub fn load_mod(mod_name: &'static str) -> AnyModRef {
     // note: we never dlclose the handle, on purpose.
 
     let symbol_name = CString::new("github.com_bearcove_dylo").unwrap();
-    let init_sym = unsafe { dlsym(handle, symbol_name.as_ptr()) };
+    let init_sym = unsafe { dlsym(handle, symbol_name.as_ptr() as *const _) };
     if init_sym.is_null() {
-        let err = unsafe { std::ffi::CStr::from_ptr(dlerror()) }
+        let err = unsafe { std::ffi::CStr::from_ptr(dlerror() as *const _) }
             .to_string_lossy()
             .into_owned();
         panic!("Did not find in dynamic library: {}", err);

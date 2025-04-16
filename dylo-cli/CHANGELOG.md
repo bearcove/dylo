@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.1](https://github.com/bearcove/dylo/compare/dylo-cli-v4.7.0...dylo-cli-v4.7.1) - 2025-04-16
+
+### Other
+
+- Remove tracing default features
+- Make generated files read only.
+
 ## [4.7.0](https://github.com/bearcove/dylo/compare/dylo-cli-v3.0.1...dylo-cli-v4.7.0) - 2025-03-22
 
 ### Added

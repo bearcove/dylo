@@ -25,7 +25,7 @@ proc-macro2 = "1.0.92"
 toml_edit = "0.22.22"
 camino = "1.1.9"
 pico-args = "0.5.0"
-tracing = "0.1.41"
+tracing = { version = "0.1.41", default-features = false }
 prettyplease = "0.2.25"
 clap = "4.5.31"
 eyre = "0.6.12"

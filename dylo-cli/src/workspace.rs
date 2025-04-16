@@ -178,6 +178,9 @@ impl FileSet {
 
     /// Write file contents to disk, creating parent directories as needed.
     pub fn commit(&self, root: &Utf8Path) -> std::io::Result<()> {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
         debug!(
             "📝 Committing {count} files to {root}",
             count = self.files.len(),
@@ -189,8 +192,24 @@ impl FileSet {
                 debug!("Creating directory {parent}");
                 fs_err::create_dir_all(parent)?;
             }
+
+            // Remove read-only restriction if the file already exists
+            if full_path.exists() {
+                let mut perms = fs::metadata(&full_path)?.permissions();
+                // Set owner write permission (octal 0o200)
+                perms.set_mode(perms.mode() | 0o200);
+                fs::set_permissions(&full_path, perms)?;
+            }
+
             debug!("Writing file to {full_path} ({} bytes)", contents.len());
             fs_err::write(&full_path, contents)?;
+
+            // Set file to read-only
+            let mut perms = fs::metadata(&full_path)?.permissions();
+            let mode = perms.mode();
+            // Remove write bits for owner, group, and others: 0o222
+            perms.set_mode(mode & !0o222);
+            fs::set_permissions(&full_path, perms)?;
         }
         Ok(())
     }
